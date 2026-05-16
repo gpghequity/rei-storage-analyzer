@@ -11,8 +11,24 @@ import {
   DEFAULT_DSCR, DEFAULT_LENDER_RATE, DEFAULT_LENDER_AM_YEARS, DEFAULT_LENDER_TERM_YEARS,
   DEFAULT_SELLER_RATE, DEFAULT_SELLER_AM_YEARS,
   DEFAULT_COLLECTION_LOSS, DEFAULT_TI_LC_PSF, DEFAULT_CAPEX_PSF,
-  LEASE_TYPE_RECOVERIES
+  LEASE_TYPE_RECOVERIES,
+  COMMERCIAL_SUBCLASSES, SUBCLASS_DEFAULTS, getSubclassDefaults,
+  detectMixedUse
 } from '../math/commercial.js'
+
+const SUBCLASS_LABELS = {
+  retail_strip: 'Retail — strip / multi-tenant',
+  retail_single: 'Retail — single-tenant NNN',
+  office_general: 'Office — general / multi-tenant',
+  office_medical: 'Office — medical (MOB)',
+  industrial_flex: 'Industrial — flex / light',
+  industrial_warehouse: 'Industrial — warehouse / distribution',
+  mixed_use: 'Mixed-use (retail + office/residential)',
+  restaurant: 'Restaurant / QSR',
+  self_serve_carwash: 'Self-serve car wash',
+  special_purpose: 'Special purpose (bank, daycare, vet)',
+  other: 'Other / generic commercial'
+}
 
 const BUILDING_TYPES = [
   'Single-tenant freestanding', 'Strip multi-tenant', 'Mixed-use',
@@ -47,7 +63,7 @@ const INITIAL = {
   propertyName: '', address: '', county: '', state: '',
   askingPrice: '', yearBuilt: '',
   totalBuildingSF: '', totalLeasableSF: '',
-  buildingType: '', parcelId: '', siteId: '',
+  buildingType: '', subclass: '', parcelId: '', siteId: '',
 
   rentRoll: [blankTenant(), blankTenant()],
   otherIncomeLines: [],
@@ -172,6 +188,19 @@ export default function CommercialTab(_props) {
               <option value="">—</option>
               {BUILDING_TYPES.map(t => <option key={t}>{t}</option>)}
             </select>
+          </div>
+          <div>
+            <label style={lbl}>Asset subclass <span style={{fontWeight: 400, color: '#64748b', fontSize: 11}}>(drives cap-rate band + warnings)</span></label>
+            <select style={inp} value={inputs.subclass} onChange={e => update('subclass', e.target.value)}>
+              <option value="">— pick to enable subclass-aware warnings —</option>
+              {COMMERCIAL_SUBCLASSES.map(k => <option key={k} value={k}>{SUBCLASS_LABELS[k] || k}</option>)}
+            </select>
+            {inputs.subclass && (
+              <div style={{fontSize: 11, color: '#475569', marginTop: 4, padding: 6, background: '#faf7ec', border: '1px solid #f0e9c8', borderRadius: 4}}>
+                <strong>{SUBCLASS_LABELS[inputs.subclass]}</strong> · typical cap {(getSubclassDefaults(inputs.subclass).typicalCapRateLow * 100).toFixed(1)}–{(getSubclassDefaults(inputs.subclass).typicalCapRateHigh * 100).toFixed(1)}% · vacancy floor {(getSubclassDefaults(inputs.subclass).vacancyFloorPct * 100).toFixed(0)}% · TI/LC ${getSubclassDefaults(inputs.subclass).tiLcPsf.toFixed(2)}/SF · CapEx ${getSubclassDefaults(inputs.subclass).capexPsf.toFixed(2)}/SF
+                <div style={{marginTop: 4, fontStyle: 'italic'}}>{getSubclassDefaults(inputs.subclass).notes}</div>
+              </div>
+            )}
           </div>
           <div><label style={lbl}>Parcel / Tax ID</label><input style={inp} value={inputs.parcelId} onChange={e => update('parcelId', e.target.value)} /></div>
           <div><label style={lbl}>Site ID (future Site Linker)</label><input style={inp} value={inputs.siteId} onChange={e => update('siteId', e.target.value)} /></div>

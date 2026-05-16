@@ -24,6 +24,137 @@ export const OLD_BUILDING_YEAR_CUTOFF = 1990
 
 export const MVM_SCENARIOS = [0, 0.20, 0.30]
 
+// ── Commercial asset subclasses ──────────────────────────────────────────
+// Different commercial property types have different market norms. The
+// subclass dropdown swaps the form's defaults to reflect what's typical for
+// retail vs office vs industrial vs medical etc. Operator can still override
+// any value — these are starting points + warning baselines.
+
+export const COMMERCIAL_SUBCLASSES = [
+  'retail_strip',       // strip center, in-line retail, small multi-tenant retail
+  'retail_single',      // single-tenant retail (NNN ground lease, QSR pad, dollar store)
+  'office_general',     // suburban office, multi-tenant
+  'office_medical',     // medical office building (MOB)
+  'industrial_flex',    // flex / light industrial, R&D
+  'industrial_warehouse', // warehouse, distribution, last-mile
+  'mixed_use',          // ground-floor retail + upper-floor office or residential
+  'restaurant',         // standalone restaurant / QSR
+  'self_serve_carwash', // car wash, drive-thru, single-purpose
+  'special_purpose',    // bank branch, daycare, vet clinic, anything bespoke
+  'other'
+]
+
+// Per-subclass defaults. These are RECOMMENDED starting points based on
+// 2026 market norms — operator should override based on local data.
+// capRate values are the BENCHMARK used for warnings ("your implied cap is
+// outside the typical X-Y% band for retail strip"). They do NOT change the
+// math directly.
+export const SUBCLASS_DEFAULTS = {
+  retail_strip: {
+    typicalCapRateLow: 0.065, typicalCapRateHigh: 0.085,
+    typicalVacancyPct: 0.08, vacancyFloorPct: 0.05,
+    tiLcPsf: 1.00, capexPsf: 0.30,
+    propMgmtPct: 0.05,
+    typicalLeaseTypes: ['NNN', 'NN'],
+    expenseRatioFloor: 0.25, expenseRatioCeiling: 0.40,
+    notes: 'Retail strips price tighter on credit-tenant percentages. Watch top-tenant concentration.'
+  },
+  retail_single: {
+    typicalCapRateLow: 0.055, typicalCapRateHigh: 0.075,
+    typicalVacancyPct: 0.02, vacancyFloorPct: 0.00,
+    tiLcPsf: 0.50, capexPsf: 0.20,
+    propMgmtPct: 0.02,
+    typicalLeaseTypes: ['NNN', 'GROUND'],
+    expenseRatioFloor: 0.05, expenseRatioCeiling: 0.20,
+    notes: 'Single-tenant NNN. Cap rate is mostly a function of tenant credit + lease term remaining.'
+  },
+  office_general: {
+    typicalCapRateLow: 0.075, typicalCapRateHigh: 0.105,
+    typicalVacancyPct: 0.15, vacancyFloorPct: 0.10,
+    tiLcPsf: 1.50, capexPsf: 0.50,
+    propMgmtPct: 0.05,
+    typicalLeaseTypes: ['MG', 'FSG'],
+    expenseRatioFloor: 0.35, expenseRatioCeiling: 0.55,
+    notes: 'Office vacancy elevated post-2020. Underwrite to 12-18% vacancy minimum even if currently full.'
+  },
+  office_medical: {
+    typicalCapRateLow: 0.065, typicalCapRateHigh: 0.080,
+    typicalVacancyPct: 0.06, vacancyFloorPct: 0.05,
+    tiLcPsf: 2.50, capexPsf: 0.60,
+    propMgmtPct: 0.05,
+    typicalLeaseTypes: ['NNN', 'MG'],
+    expenseRatioFloor: 0.30, expenseRatioCeiling: 0.45,
+    notes: 'Medical offices have heavy buildout costs (MOB TI often $50-150/SF on renewal).'
+  },
+  industrial_flex: {
+    typicalCapRateLow: 0.055, typicalCapRateHigh: 0.075,
+    typicalVacancyPct: 0.05, vacancyFloorPct: 0.03,
+    tiLcPsf: 0.75, capexPsf: 0.25,
+    propMgmtPct: 0.04,
+    typicalLeaseTypes: ['NNN', 'NN'],
+    expenseRatioFloor: 0.10, expenseRatioCeiling: 0.25,
+    notes: 'Flex space — small bays, mix of office + warehouse. Strong fundamentals in most metros.'
+  },
+  industrial_warehouse: {
+    typicalCapRateLow: 0.050, typicalCapRateHigh: 0.070,
+    typicalVacancyPct: 0.04, vacancyFloorPct: 0.03,
+    tiLcPsf: 0.40, capexPsf: 0.20,
+    propMgmtPct: 0.03,
+    typicalLeaseTypes: ['NNN'],
+    expenseRatioFloor: 0.08, expenseRatioCeiling: 0.20,
+    notes: 'Last-mile + distribution. Cap rates compressed since 2020. Roof + paving are the big capex items.'
+  },
+  mixed_use: {
+    typicalCapRateLow: 0.065, typicalCapRateHigh: 0.090,
+    typicalVacancyPct: 0.10, vacancyFloorPct: 0.05,
+    tiLcPsf: 1.00, capexPsf: 0.40,
+    propMgmtPct: 0.06,
+    typicalLeaseTypes: ['NNN', 'MG', 'FSG'],
+    expenseRatioFloor: 0.30, expenseRatioCeiling: 0.50,
+    notes: 'Ground-floor retail + upper-floor office/residential. Consider rei-mixed-use for full per-asset blend.'
+  },
+  restaurant: {
+    typicalCapRateLow: 0.055, typicalCapRateHigh: 0.080,
+    typicalVacancyPct: 0.03, vacancyFloorPct: 0.00,
+    tiLcPsf: 1.50, capexPsf: 0.40,
+    propMgmtPct: 0.03,
+    typicalLeaseTypes: ['NNN', 'PERCENTAGE'],
+    expenseRatioFloor: 0.05, expenseRatioCeiling: 0.25,
+    notes: 'QSR / national chain = tight cap. Independent = much wider cap, longer marketing if vacant.'
+  },
+  self_serve_carwash: {
+    typicalCapRateLow: 0.075, typicalCapRateHigh: 0.110,
+    typicalVacancyPct: 0.00, vacancyFloorPct: 0.00,
+    tiLcPsf: 0.50, capexPsf: 1.00,
+    propMgmtPct: 0.08,
+    typicalLeaseTypes: ['NNN'],
+    expenseRatioFloor: 0.30, expenseRatioCeiling: 0.55,
+    notes: 'Equipment-heavy. Capex reserve must be high — tunnels and reclaim systems are expensive.'
+  },
+  special_purpose: {
+    typicalCapRateLow: 0.070, typicalCapRateHigh: 0.110,
+    typicalVacancyPct: 0.05, vacancyFloorPct: 0.00,
+    tiLcPsf: 1.50, capexPsf: 0.50,
+    propMgmtPct: 0.05,
+    typicalLeaseTypes: ['NNN', 'GROUND'],
+    expenseRatioFloor: 0.20, expenseRatioCeiling: 0.45,
+    notes: 'Single-purpose buildings have re-tenanting risk. Discount cap rate for time-to-fill on rollover.'
+  },
+  other: {
+    typicalCapRateLow: 0.060, typicalCapRateHigh: 0.100,
+    typicalVacancyPct: 0.10, vacancyFloorPct: 0.05,
+    tiLcPsf: DEFAULT_TI_LC_PSF, capexPsf: DEFAULT_CAPEX_PSF,
+    propMgmtPct: DEFAULT_PROP_MGMT_PCT,
+    typicalLeaseTypes: ['NNN', 'NN', 'MG'],
+    expenseRatioFloor: 0.20, expenseRatioCeiling: 0.50,
+    notes: 'Generic commercial defaults. Override based on local comps.'
+  }
+}
+
+export function getSubclassDefaults(subclass) {
+  return SUBCLASS_DEFAULTS[subclass] || SUBCLASS_DEFAULTS.other
+}
+
 export const LEASE_TYPE_RECOVERIES = {
   NNN: ['taxes', 'insurance', 'cam'],
   NN: ['taxes', 'insurance'],
@@ -266,6 +397,63 @@ export function recoveryRatio(income, opEx) {
   return income.totalReimbursements / totalRecoverable
 }
 
+// Subclass-aware warnings — flag when the underwriting strays from the typical
+// band for the chosen subclass. Operator can ignore; surfaces below the
+// scenario table.
+export function subclassWarnings({ subclass, results, income, opEx, reserves, askingPrice }) {
+  const sub = subclass || 'other'
+  const defaults = getSubclassDefaults(sub)
+  const w = []
+  if (!subclass || subclass === 'other') return w
+
+  const baseline = (results || []).find(r => r.mvmPct === 0)
+  if (!baseline) return w
+
+  // Cap rate band check (only meaningful if asking price is entered)
+  if (askingPrice > 0 && baseline.impliedCapRate != null) {
+    if (baseline.impliedCapRate < defaults.typicalCapRateLow) {
+      w.push({ severity: 'warn', message: `Implied cap ${(baseline.impliedCapRate * 100).toFixed(2)}% is BELOW the ${(defaults.typicalCapRateLow * 100).toFixed(1)}-${(defaults.typicalCapRateHigh * 100).toFixed(1)}% typical band for ${sub.replace(/_/g, ' ')} — verify NOI or price.` })
+    } else if (baseline.impliedCapRate > defaults.typicalCapRateHigh) {
+      w.push({ severity: 'info', message: `Implied cap ${(baseline.impliedCapRate * 100).toFixed(2)}% is ABOVE the typical band for ${sub.replace(/_/g, ' ')} — may indicate deferred maintenance, lease-up risk, or genuine value buy.` })
+    }
+  }
+
+  // Vacancy floor check
+  if (income.physicalVacancyPct < defaults.vacancyFloorPct) {
+    w.push({ severity: 'warn', message: `Currently 100%+ leased, but underwrite to at least ${(defaults.vacancyFloorPct * 100).toFixed(0)}% vacancy floor for ${sub.replace(/_/g, ' ')} — leases roll, tenants move.` })
+  }
+
+  // Reserve floor checks
+  if (num(reserves.tiLcPsf) < defaults.tiLcPsf * 0.5) {
+    w.push({ severity: 'warn', message: `TI/LC reserve $${num(reserves.tiLcPsf).toFixed(2)}/SF is well below typical $${defaults.tiLcPsf.toFixed(2)}/SF for ${sub.replace(/_/g, ' ')}.` })
+  }
+  if (num(reserves.capexPsf) < defaults.capexPsf * 0.5) {
+    w.push({ severity: 'warn', message: `CapEx reserve $${num(reserves.capexPsf).toFixed(2)}/SF is well below typical $${defaults.capexPsf.toFixed(2)}/SF for ${sub.replace(/_/g, ' ')}.` })
+  }
+
+  // Expense ratio sanity (OpEx / GSI)
+  const grossOpEx = baseline.grossOpEx || 0
+  const gsi = baseline.gsi || 0
+  if (gsi > 0) {
+    const expRatio = grossOpEx / gsi
+    if (expRatio < defaults.expenseRatioFloor) {
+      w.push({ severity: 'warn', message: `Expense ratio ${(expRatio * 100).toFixed(0)}% is suspiciously low for ${sub.replace(/_/g, ' ')} (typical ${(defaults.expenseRatioFloor * 100).toFixed(0)}-${(defaults.expenseRatioCeiling * 100).toFixed(0)}%) — verify all OpEx lines are captured.` })
+    } else if (expRatio > defaults.expenseRatioCeiling) {
+      w.push({ severity: 'info', message: `Expense ratio ${(expRatio * 100).toFixed(0)}% is above the typical ${(defaults.expenseRatioCeiling * 100).toFixed(0)}% ceiling for ${sub.replace(/_/g, ' ')} — investigate which line item is high.` })
+    }
+  }
+
+  // Lease-type alignment
+  const ltUsed = new Set((income.tenants || []).filter(t => t.isLeased).map(t => t.leaseType).filter(Boolean))
+  const typical = new Set(defaults.typicalLeaseTypes)
+  const atypical = [...ltUsed].filter(lt => !typical.has(lt))
+  if (atypical.length > 0 && ltUsed.size > 0) {
+    w.push({ severity: 'info', message: `Lease type(s) ${atypical.join(', ')} are atypical for ${sub.replace(/_/g, ' ')} (typical: ${defaults.typicalLeaseTypes.join('/')}) — confirm with seller.` })
+  }
+
+  return w
+}
+
 export function detectWarnings({ income, tenants, results, askingPrice, reserves, yearBuilt }) {
   const w = []
   const conc = tenantConcentration(tenants)
@@ -331,9 +519,40 @@ export function computeCommercial(inputs) {
     yearBuilt: num(inputs.yearBuilt)
   })
 
+  // Subclass-specific warnings layered on top
+  const subWarnings = subclassWarnings({
+    subclass: inputs.subclass, results, income, opEx: inputs.opEx || {},
+    reserves, askingPrice
+  })
+
   return {
-    income, results, warnings,
+    income, results,
+    warnings: [...warnings, ...subWarnings],
+    subclass: inputs.subclass || null,
+    subclassDefaults: inputs.subclass ? getSubclassDefaults(inputs.subclass) : null,
     commercial: { conc, mix, ltMix, walt, rollover, avgRentPsf, recRatio,
       econVacancyApplied: econVac, collectionLossApplied: colLoss }
   }
+}
+
+// ── Mixed-use auto-detection ─────────────────────────────────────────────
+// When a deal has tenants spanning multiple asset categories (e.g. retail
+// downstairs + residential upstairs + warehouse out back), single-class math
+// understates the value. This helper flags it so the UI can route to
+// rei-mixed-use instead.
+export function detectMixedUse({ subclass, tenants, additionalAssets }) {
+  // Explicit signal from operator
+  if (subclass === 'mixed_use') return { isMixedUse: true, reason: 'subclass=mixed_use' }
+  // Tenant types span major categories
+  if (Array.isArray(tenants)) {
+    const types = new Set(tenants.filter(t => t.isLeased && t.tenantType).map(t => t.tenantType.toLowerCase()))
+    const major = ['retail', 'office', 'industrial', 'medical', 'residential', 'restaurant']
+    const present = major.filter(m => [...types].some(t => t.includes(m)))
+    if (present.length >= 2) return { isMixedUse: true, reason: `tenant categories span ${present.join(' + ')}` }
+  }
+  // Operator added non-commercial parallel assets (storage, MHP entries)
+  if (Array.isArray(additionalAssets) && additionalAssets.length > 0) {
+    return { isMixedUse: true, reason: `${additionalAssets.length} additional asset entries (e.g. ${additionalAssets.slice(0, 2).map(a => a.type || '').join(', ')})` }
+  }
+  return { isMixedUse: false, reason: null }
 }
