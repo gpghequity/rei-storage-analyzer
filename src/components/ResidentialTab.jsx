@@ -5,6 +5,7 @@ import {
 } from '../math/residential.js'
 import { runResidentialDeal } from '../math/scenarioEngine.js'
 import { loadConstants } from '../math/constants.js'
+import ExitStrategiesTab from './ExitStrategiesTab.jsx'
 
 const C = loadConstants()
 
@@ -121,21 +122,27 @@ export default function ResidentialTab({ urlState, sharedUrlState }) {
 
       <ModeToggle mode={mode} setMode={setMode} setResults={setResults} />
 
-      {mode === 'flip' ? (
-        <FlipForm inputs={flipInputs} update={updateFlip} />
+      {mode === 'altexit' ? (
+        <ExitStrategiesTab />
       ) : (
-        <RentalForm inputs={rentalInputs} update={updateRental} />
-      )}
+        <>
+          {mode === 'flip' ? (
+            <FlipForm inputs={flipInputs} update={updateFlip} />
+          ) : (
+            <RentalForm inputs={rentalInputs} update={updateRental} />
+          )}
 
-      <button type="button" onClick={calc} style={btnStyle}>Calculate</button>
+          <button type="button" onClick={calc} style={btnStyle}>Calculate</button>
 
-      {results && results.error && <div style={errorBoxStyle}>{results.error}</div>}
-      {results && !results.error && (
-        <div className="results-section">
-          {results.mode === 'flip' && <FlipResults r={results} />}
-          {results.mode === 'rental' && <RentalResults r={results} />}
-          <LoiPrepResidential mode={results.mode} results={results} propertyContext={propertyContext} />
-        </div>
+          {results && results.error && <div style={errorBoxStyle}>{results.error}</div>}
+          {results && !results.error && (
+            <div className="results-section">
+              {results.mode === 'flip' && <FlipResults r={results} />}
+              {results.mode === 'rental' && <RentalResults r={results} />}
+              <LoiPrepResidential mode={results.mode} results={results} propertyContext={propertyContext} />
+            </div>
+          )}
+        </>
       )}
     </section>
   )
@@ -201,6 +208,7 @@ function ModeToggle({ mode, setMode, setResults }) {
     <div style={{ display: 'flex', gap: 8, padding: 4, backgroundColor: '#eef2fb', borderRadius: 6, alignSelf: 'flex-start' }}>
       <ModeButton active={mode === 'flip'} onClick={() => swap('flip')}>Flip (MAO)</ModeButton>
       <ModeButton active={mode === 'rental'} onClick={() => swap('rental')}>Rental (DSCR)</ModeButton>
+      <ModeButton active={mode === 'altexit'} onClick={() => swap('altexit')}>Alt Exit Strategy</ModeButton>
     </div>
   )
 }

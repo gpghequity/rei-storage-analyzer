@@ -3,7 +3,7 @@ import StorageTab from './components/StorageTab.jsx'
 import ResidentialTab from './components/ResidentialTab.jsx'
 import MhpTab from './components/MhpTab.jsx'
 import CommercialTab from './components/CommercialTab.jsx'
-import ExitStrategiesTab from './components/ExitStrategiesTab.jsx'
+import MixedUseTab from './components/MixedUseTab.jsx'
 import { parseSearchString } from './connectors/urlParams.js'
 
 const TABS = [
@@ -11,10 +11,10 @@ const TABS = [
   { id: 'residential', label: 'Residential', component: ResidentialTab },
   { id: 'mhp', label: 'MHP', component: MhpTab },
   { id: 'commercial', label: 'Commercial', component: CommercialTab },
-  { id: 'exit', label: 'Alt Exits', component: ExitStrategiesTab }
+  { id: 'mixeduse', label: 'Mixed Use', component: MixedUseTab }
 ]
 
-const VERSION = '0.3.0'
+const VERSION = '0.4.0'
 const BUILD_DATE = '2026-05-17'
 
 // Read URL params once at module load — populates initial active tab + tab states.

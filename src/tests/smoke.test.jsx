@@ -10,13 +10,13 @@ describe('App skeleton', () => {
     expect(screen.getByText(/Operator-grade pre-LOI deal analysis/i)).toBeInTheDocument()
   })
 
-  it('renders all five tab buttons including Alt Exits', () => {
+  it('renders all five tab buttons including Mixed Use', () => {
     render(<App />)
     expect(screen.getByRole('button', { name: 'Storage' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Residential' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'MHP' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Commercial' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Alt Exits' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Mixed Use' })).toBeInTheDocument()
   })
 
   it('shows Storage tab content by default', () => {
