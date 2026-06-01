@@ -24,3 +24,15 @@ dist-ssr
 *.sw?
 
 .vercel
+
+# Credential dump files — never commit
+*_vars.json
+sa_temp.json
+*credentials*.json
+*.key.json
+gorilla-real-estate-*.json
+.env.local
+.env.*.local
+deploy-make.js
+*.pem
+*.p12

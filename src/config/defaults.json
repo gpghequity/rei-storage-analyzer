@@ -31,7 +31,7 @@
     "STORAGE_EXPENSE_FLOOR": 0.35,
     "PAD_LIGHT":    0.00,
     "PAD_STANDARD": 0.20,
-    "PAD_HARSH":    0.30
+    "PAD_HARSH":    0.33
   },
   "reserves": {
     "WORKING_CAPITAL_PCT": 0.25,
