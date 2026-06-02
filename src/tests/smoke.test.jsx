@@ -65,7 +65,7 @@ describe('App skeleton — one analyzer path', () => {
   it('shows the engine status line', () => {
     render(<App />)
     expect(screen.getByText(/Engine status/i)).toBeInTheDocument()
-    expect(screen.getByText(/App v0\.8\.0/i)).toBeInTheDocument()
+    expect(screen.getByText(/App v0\.8\.1/i)).toBeInTheDocument()
   })
 
   it('QA Runner tab loads without crashing', async () => {

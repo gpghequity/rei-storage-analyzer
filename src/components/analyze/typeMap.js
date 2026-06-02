@@ -192,6 +192,37 @@ export const PROPERTY_TYPES = [
     }
   },
   {
+    id: 'rv_park',
+    label: 'RV Park',
+    enrichAssetType: 'mhp',
+    implemented: true,
+    note: 'Income property. Headline value uses NOI × 13 (~7.7% cap — latest auto-offer method) alongside the full financing matrix.',
+    fields: [
+      { key: 'askingPrice', label: 'Seller Asking Price ($)', type: 'money' },
+      { key: 'sites', label: 'Total RV Sites', type: 'number' },
+      { key: 'siteRent', label: 'Avg Site Rent ($/site/month)', type: 'money' },
+      { key: 'occupancy', label: 'Occupancy (%)', type: 'number' },
+      { key: 'grossIncome', label: 'Gross Annual Income ($/yr)', type: 'money', hint: 'All site rent + other income, before expenses.' },
+      { key: 'expenses', label: 'Annual Operating Expenses ($/yr)', type: 'money', hint: 'NOI = Income − Expenses (40% assumed if blank).' }
+    ],
+    buildCalc: (f) => { const noi = deriveNOI(f); return noi > 0 ? { type: 'storage_group_a', inputs: { noi } } : null; }
+  },
+  {
+    id: 'ios',
+    label: 'Industrial Outdoor Storage (IOS)',
+    enrichAssetType: 'commercial',
+    implemented: true,
+    note: 'Income property (truck/trailer/equipment yards). Headline value uses NOI × 14 (~7.1% cap — latest auto-offer method) alongside the full financing matrix.',
+    fields: [
+      { key: 'askingPrice', label: 'Seller Asking Price ($)', type: 'money' },
+      { key: 'acres', label: 'Usable Acres', type: 'number' },
+      { key: 'occupancy', label: 'Occupancy (%)', type: 'number' },
+      { key: 'grossIncome', label: 'Gross Annual Income ($/yr)', type: 'money', hint: 'All yard/space rent + other income, before expenses.' },
+      { key: 'expenses', label: 'Annual Operating Expenses ($/yr)', type: 'money', hint: 'NOI = Income − Expenses (40% assumed if blank).' }
+    ],
+    buildCalc: (f) => { const noi = deriveNOI(f); return noi > 0 ? { type: 'storage_group_a', inputs: { noi } } : null; }
+  },
+  {
     id: 'mixed_use',
     label: 'Mixed Use',
     enrichAssetType: 'commercial',

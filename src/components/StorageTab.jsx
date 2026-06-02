@@ -186,7 +186,7 @@ function LoiPrepStorage({ inputs, results }) {
 
       <div style={{ marginTop: 16, paddingTop: 12, borderTop: '1px dashed #d4dae8', fontSize: 12, color: '#5a6a8a', fontStyle: 'italic' }}>
         This is a pre-LOI internal worksheet. Math Bible v3 tougher-of-the-engines numbers shown above. Verify all
-        figures against the source T-12 / appraisal / lender quote before issuing an actual LOI.
+        figures against the source T-12 / value estimate / lender quote before issuing an actual LOI.
       </div>
 
       <div className="no-print" style={{ marginTop: 16, display: 'flex', gap: 8 }}>
@@ -219,7 +219,7 @@ function buildPlainText(inputs, results, groupA125) {
   lines.push(`Verdict: ${results.verdict.verdict}`)
   lines.push('')
   lines.push('Pre-LOI internal worksheet — Math Bible v3.')
-  lines.push('Verify all figures against source T-12 / appraisal / lender quote.')
+  lines.push('Verify all figures against source T-12 / value estimate / lender quote.')
   return lines.join('\n')
 }
 

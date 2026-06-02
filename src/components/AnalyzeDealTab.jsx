@@ -202,6 +202,7 @@ function ExecutiveSummary({ r }) {
         <Val label="Conservative Value (1.25 DSCR)" value={money(s.conservativeValue)} source="Math Bible — bank-only @1.25" />
         <Val label="Aggressive Value (1.15 DSCR)" value={money(s.aggressiveValue)} source="Math Bible — bank-only @1.15" />
         <Val label="Best Seller-Finance Value" value={money(s.bestSellerFinanceValue)} source="Math Bible — $100k + seller structure" />
+        {s.capMultipleValue != null && <Val label={`Cap-Multiplier Value (NOI × ${s.capMultiple})`} value={money(s.capMultipleValue)} source="Latest auto-offer method (RV ×13 / IOS ×14)" />}
         <Val label="Recommended Offer Range" value={`${money(s.recommendedOfferRange[0])} – ${money(s.recommendedOfferRange[1])}`} source="1.25 → 1.15 DSCR band" />
         <Val label="Pocket Money Range" value={`${money(s.pocketRange[0])} – ${money(s.pocketRange[1])}`} source="Across all 8 structures" />
         <Val label="Seller Asking" value={money(r.inputs.askingPrice || ex?.asking)} source={r.inputs.askingPrice ? 'User input' : (ex?.asking ? 'Extracted document' : 'not provided')} />

@@ -36,11 +36,15 @@ const SELLER_BALLOON_YEARS = 15 // per spec for the $100k + seller structure
 // EXCLUDED (do NOT use this matrix):
 //   residential, multifamily_small (1-19) → residential / agency-style math (80/20 @ 7% / 30-yr)
 //   ios_land → land supported-intake (no offer engine)
-export const INCOME_ASSET_TYPES = ['self_storage', 'multifamily_large', 'commercial', 'mhp_rv', 'mixed_use']
+export const INCOME_ASSET_TYPES = ['self_storage', 'multifamily_large', 'commercial', 'mhp_rv', 'mixed_use', 'rv_park', 'ios']
 
 export function isIncomeAsset(typeId) {
   return INCOME_ASSET_TYPES.includes(typeId)
 }
+
+// Latest auto-offer cap-multiplier valuation for niche income classes (value =
+// NOI × multiplier). Shown alongside the DSCR financing matrix, not instead of it.
+export const CAP_MULTIPLIER = { rv_park: 13, ios: 14 }
 
 // Per-class bank terms — LTV is asset-correct per the Math Bible (NOT a blanket
 // 0.70). Storage/MF-20+/MHP carry 75/25 @ 7.25%/25yr; commercial carries its own
@@ -53,6 +57,9 @@ export function bankTermsFor(typeId, C) {
       return { ltv: C.LTV_STORAGE, K: C.K_BANK_STORAGE, rateLabel: '75/25 LTV · 7.25% / 25-yr (Math Bible storage / commercial income-property terms)' }
     case 'mhp_rv':
       return { ltv: C.LTV_STORAGE, K: C.K_BANK_STORAGE, rateLabel: '75/25 LTV · 7.25% / 25-yr (storage/commercial income terms — use the MHP tab for full lot/POH analysis)' }
+    case 'rv_park':
+    case 'ios':
+      return { ltv: C.LTV_STORAGE, K: C.K_BANK_STORAGE, rateLabel: '75/25 LTV · 7.25% / 25-yr (storage/commercial income terms)' }
     case 'commercial':
     case 'mixed_use':
       return { ltv: 0.75, K: annualLoanConstant(0.07, 30), rateLabel: '75/25 LTV · 7% / 30-yr (Math Bible commercial income-property terms)' }
@@ -160,9 +167,12 @@ export function buildIncomeMatrix({ assetType, noi }) {
   const pockets = rows.map(r => r.pocketMoney)
   const offers = rows.map(r => r.offer).concat([sellerFinanced.conservative, sellerFinanced.aggressive])
 
+  const capMultiple = CAP_MULTIPLIER[assetType] || null
   const summary = {
     noi,
     assetType,
+    capMultiple,                                  // RV ×13 / IOS ×14 (else null)
+    capMultipleValue: capMultiple ? Math.round(noi * capMultiple) : null,
     conservativeValue: bankOnly125.offer,        // 1.25 bank-only
     aggressiveValue: bankOnly115.offer,           // 1.15 bank-only
     bestSellerFinanceValue: sellerFinanced.aggressive, // Group B @1.15 — highest supportable via cheaper seller debt

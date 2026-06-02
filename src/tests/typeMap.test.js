@@ -2,11 +2,11 @@ import { describe, it, expect } from 'vitest'
 import { PROPERTY_TYPES, getType, deriveNOI } from '../components/analyze/typeMap.js'
 
 describe('Analyze workspace type map', () => {
-  it('exposes the 8 supported types (MF split into tiers) and excludes Lending', () => {
+  it('exposes the 10 supported types (MF tiers + RV/IOS) and excludes Lending', () => {
     const ids = PROPERTY_TYPES.map(t => t.id)
     expect(ids).toEqual([
       'residential', 'self_storage', 'multifamily_small', 'multifamily_large',
-      'commercial', 'mhp_rv', 'mixed_use', 'ios_land'
+      'commercial', 'mhp_rv', 'rv_park', 'ios', 'mixed_use', 'ios_land'
     ])
     expect(ids).not.toContain('lending')
     expect(ids).not.toContain('multifamily') // replaced by the two tiers
@@ -36,6 +36,18 @@ describe('Analyze workspace type map', () => {
     const calc = getType('mhp_rv').buildCalc({ lots: 40, lotRent: 350 })
     expect(calc.type).toBe('mhp_noi')
     expect(calc.chainToStorage).toBe(true)
+  })
+
+  it('RV Park and IOS are income assets with cap multipliers 13 / 14', async () => {
+    const { isIncomeAsset, CAP_MULTIPLIER, bankTermsFor } = await import('../components/analyze/incomeMatrix.js')
+    const { loadConstants } = await import('../math/constants.js')
+    expect(isIncomeAsset('rv_park')).toBe(true)
+    expect(isIncomeAsset('ios')).toBe(true)
+    expect(CAP_MULTIPLIER.rv_park).toBe(13)
+    expect(CAP_MULTIPLIER.ios).toBe(14)
+    const C = loadConstants()
+    expect(bankTermsFor('rv_park', C).ltv).toBe(0.75)
+    expect(bankTermsFor('ios', C).ltv).toBe(0.75)
   })
 
   it('residential flip uses MAO, rental uses DSCR', () => {
