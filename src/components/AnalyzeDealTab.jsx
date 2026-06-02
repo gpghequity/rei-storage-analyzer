@@ -12,6 +12,11 @@ import MhpTab from './MhpTab.jsx'
 import CommercialTab from './CommercialTab.jsx'
 import MixedUseTab from './MixedUseTab.jsx'
 import LandTab from './LandTab.jsx'
+import RehabSection from './analyze/RehabSection.jsx'
+
+// Which types get the embedded condition→rehab calculator, and which Rehab Calc
+// system set they use. Residential rehab feeds the flip MAO.
+const REHAB_MODE = { residential: 'residential', self_storage: 'storage', commercial: 'commercial' }
 
 // ── formatting ──
 const money = (v) => (v == null || v === '' || !Number.isFinite(Number(v)))
@@ -337,6 +342,7 @@ export default function AnalyzeDealTab({ sharedUrlState, deepUrlState }) {
   const [typeId, setTypeId] = useState('residential')
   const [mode, setMode] = useState('flip')
   const [advancedOpen, setAdvancedOpen] = useState(false)
+  const [rehabCondition, setRehabCondition] = useState(0) // manual condition → rehab $
   const [fields, setFields] = useState({ address: '', city: '', state: '', zip: '' })
   const [docs, setDocs] = useState([])
   const [photos, setPhotos] = useState([])
@@ -357,6 +363,14 @@ export default function AnalyzeDealTab({ sharedUrlState, deepUrlState }) {
       : null
   const activeFields = (type.fields || []).filter(f => !f.modes || f.modes.includes(mode))
   const set = (k, v) => setFields(p => ({ ...p, [k]: v }))
+  // Embedded condition→rehab calculator: residential (flip), storage, commercial.
+  const rehabMode = REHAB_MODE[typeId]
+  const showRehab = Boolean(rehabMode) && (typeId !== 'residential' || mode === 'flip')
+  const rehabSeed = typeId === 'residential'
+    ? { units: num(fields.units) || 1, sqFtPerUnit: (num(fields.sqft) && num(fields.units)) ? Math.round(num(fields.sqft) / num(fields.units)) : (num(fields.sqft) || ''), commonSqFt: 0, stories: num(fields.stories) || 1 }
+    : typeId === 'self_storage'
+      ? { totalUnits: fields.totalUnits, roofSqFt: fields.netRentableSqft, exteriorSqFt: fields.netRentableSqft }
+      : { buildingSqFt: fields.sqft, roofSqFt: fields.sqft }
 
   async function analyze() {
     setError(null); setResult(null)
@@ -405,6 +419,9 @@ export default function AnalyzeDealTab({ sharedUrlState, deepUrlState }) {
         if (!num(calcFields.grossIncome) && extractedNorm.grossIncome) calcFields.grossIncome = extractedNorm.grossIncome
         if (!num(calcFields.askingPrice) && extractedNorm.asking) calcFields.askingPrice = extractedNorm.asking
       }
+      // Condition-based rehab (from the embedded Rehab Calc) feeds the flip MAO when
+      // the operator didn't type a manual rehab number.
+      if (showRehab && !num(calcFields.rehab) && rehabCondition > 0) calcFields.rehab = rehabCondition
       setStep('Running Math Bible analysis…')
       let calc = null, head = {}, calcTypeUsed = null, matrix = null, noiBasis = null
 
@@ -515,6 +532,10 @@ export default function AnalyzeDealTab({ sharedUrlState, deepUrlState }) {
         calc, calcTypeUsed, headline: head, matrix, noiBasis,
         recommendation: rec,
         brokerNOI, calcNOI, noiDelta,
+        // Two rehab totals: human/manual condition vs photo-read (pic-rehab).
+        rehabCondition: showRehab ? rehabCondition : null,
+        rehabPhoto: photoRes?.rehab_estimate_mid ?? null,
+        rehabUsed: num(calcFields.rehab) || null,
         missing,
         driveUrl: orch.driveUrl,
         folderId: orch.folderId,
@@ -559,7 +580,7 @@ export default function AnalyzeDealTab({ sharedUrlState, deepUrlState }) {
     <div>
       <div style={card} className="no-print">
         <h3 style={h3}>1 · Property Type</h3>
-        <select style={inp} value={typeId} onChange={e => { setTypeId(e.target.value); const t = getType(e.target.value); if (t.subModes) setMode(t.subModes[0].id) }}>
+        <select aria-label="Property type" style={inp} value={typeId} onChange={e => { setTypeId(e.target.value); const t = getType(e.target.value); if (t.subModes) setMode(t.subModes[0].id) }}>
           {PROPERTY_TYPES.map(t => <option key={t.id} value={t.id}>{t.label}</option>)}
         </select>
         {/* Flip / Rental etc. submodes (guided screen only). */}
@@ -605,8 +626,15 @@ export default function AnalyzeDealTab({ sharedUrlState, deepUrlState }) {
         </div>
       </div>
 
+      {showRehab && (
+        <div style={card} className="no-print">
+          <h3 style={h3}>3 · Property Condition → Rehab Estimate</h3>
+          <RehabSection mode={rehabMode} seed={rehabSeed} onTotalChange={setRehabCondition} />
+        </div>
+      )}
+
       <div style={card} className="no-print">
-        <h3 style={h3}>3 · Upload Documents & Photos</h3>
+        <h3 style={h3}>{showRehab ? '4' : '3'} · Upload Documents & Photos</h3>
         <label style={lbl}>Documents (OM, rent roll, T12, financials) — sent to the extractor</label>
         <input type="file" multiple accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.txt" onChange={e => setDocs([...e.target.files])} />
         {docs.length > 0 && <div style={srcStyle}>{docs.length} document(s) attached</div>}
@@ -731,6 +759,23 @@ function Results({ r }) {
           </>
         )}
       </div>
+      )}
+
+      {/* REHAB — two independent totals: manual condition vs photo-read */}
+      {(r.rehabCondition != null || r.rehabPhoto != null) && (
+        <div style={card}>
+          <h3 style={h3}>Rehab — Two Views</h3>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+            <Val label="Human / manual condition" value={money(r.rehabCondition)} source="Rehab Calc — your condition answers" />
+            <Val label="Photo-read condition" value={money(r.rehabPhoto)} source="Photo analyzer (pic-rehab)" />
+          </div>
+          <p style={srcStyle}>
+            {r.rehabUsed != null
+              ? `Offer math used ${money(r.rehabUsed)} (manual condition takes priority; a typed Rehab Budget overrides both).`
+              : 'Enter property condition above (or upload photos) to drive the rehab number into the offer.'}
+            {' '}Per-line photo conditions and the national-average column are the next add.
+          </p>
+        </div>
       )}
 
       {/* BROKER vs CALCULATED NOI */}

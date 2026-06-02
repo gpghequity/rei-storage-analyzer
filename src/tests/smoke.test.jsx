@@ -35,7 +35,7 @@ describe('App skeleton — one analyzer path', () => {
   it('asks Income + Expenses, never NOI, for income types', async () => {
     const user = userEvent.setup()
     render(<App />)
-    await user.selectOptions(screen.getByRole('combobox'), 'self_storage')
+    await user.selectOptions(screen.getByRole('combobox', { name: /property type/i }), 'self_storage')
     expect(screen.getByText(/Gross Annual Income/i)).toBeInTheDocument()
     expect(screen.getByText(/Annual Operating Expenses/i)).toBeInTheDocument()
     // The form must NOT ask the user to type an NOI.
@@ -45,7 +45,7 @@ describe('App skeleton — one analyzer path', () => {
   it('uses non-overlapping unit bands: 1-4 / 5-19 / 20+', async () => {
     const user = userEvent.setup()
     render(<App />)
-    const select = screen.getByRole('combobox')
+    const select = screen.getByRole('combobox', { name: /property type/i })
     expect(screen.getByRole('option', { name: /1–4 units/i })).toBeInTheDocument()
     expect(screen.getByRole('option', { name: /5–19 units/i })).toBeInTheDocument()
     expect(screen.getByRole('option', { name: /20\+ units/i })).toBeInTheDocument()
@@ -65,7 +65,7 @@ describe('App skeleton — one analyzer path', () => {
   it('shows the engine status line', () => {
     render(<App />)
     expect(screen.getByText(/Engine status/i)).toBeInTheDocument()
-    expect(screen.getByText(/App v0\.7\.2/i)).toBeInTheDocument()
+    expect(screen.getByText(/App v0\.8\.0/i)).toBeInTheDocument()
   })
 
   it('QA Runner tab loads without crashing', async () => {
@@ -79,7 +79,7 @@ describe('App skeleton — one analyzer path', () => {
   it('Land / IOS opens its dedicated intake as the main screen', async () => {
     const user = userEvent.setup()
     render(<App />)
-    await user.selectOptions(screen.getByRole('combobox'), 'ios_land')
+    await user.selectOptions(screen.getByRole('combobox', { name: /property type/i }), 'ios_land')
     expect(screen.getByRole('heading', { name: /Land \/ IOS \/ Outdoor Storage/i })).toBeInTheDocument()
   })
 })
