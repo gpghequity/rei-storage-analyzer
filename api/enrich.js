@@ -48,10 +48,14 @@ export async function enrichCore(b = {}) {
       out.avm = {
         value: avm.json.avm_value, low: avm.json.avm_low, high: avm.json.avm_high,
         source: avm.json.avm_source || 'data-enrichment',
-        comparables: avm.json.avm_comparables ?? null,
+        comparables_count: avm.json.avm_comparables ?? null,
         rent_estimate: avm.json.rent_estimate ?? null
       };
       out.sources.avm = avm.json.avm_source || 'data-enrichment';
+      // The comp evidence (the actual comparable sales) + the subject property
+      // they're measured against — so the operator can see the proof, not just a number.
+      out.comparables = Array.isArray(avm.json.comparables) ? avm.json.comparables : [];
+      out.subject = avm.json.subject || null;
       // Second, independent comp source (web: Zillow / Realtor via Firecrawl).
       if (avm.json.avm2_value != null) {
         out.avm2 = {

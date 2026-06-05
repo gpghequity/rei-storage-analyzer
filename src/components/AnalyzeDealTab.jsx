@@ -263,6 +263,64 @@ function TwoCompSources({ primary, secondary }) {
   )
 }
 
+// The actual comparable sales behind the AVM — the PROOF. Shows the subject
+// property up top, then each comp with address (clickable), beds/baths/sqft,
+// price and distance. Mismatched beds/baths/sqft are flagged so you can catch a
+// 2-bed subject being valued off 4-bed comps.
+function CompEvidence({ subject, comps }) {
+  if (!comps || !comps.length) {
+    return (
+      <p style={{ ...srcStyle, marginTop: 6 }}>
+        No individual comparable sales were returned for this address{subject ? '' : ''} — the AVM value above is the provider’s estimate without a comp list (often the case for unique or rural properties). Treat the number as lower-confidence.
+      </p>
+    )
+  }
+  const s = subject || {}
+  const mism = (a, b) => (a != null && b != null && Number(a) !== Number(b))
+  const sqftOff = (cs) => (s.sqft && cs && Math.abs(cs - s.sqft) / s.sqft > 0.25) // >25% sqft gap
+  const th = { padding: '6px 8px', background: '#0A0F2C', color: '#fff', fontSize: 11, textAlign: 'right', whiteSpace: 'nowrap' }
+  const td = { padding: '6px 8px', fontSize: 12, textAlign: 'right', borderBottom: '1px solid #eef1f7', whiteSpace: 'nowrap' }
+  const warn = { color: '#B23030', fontWeight: 700 }
+  return (
+    <div style={{ marginTop: 10 }}>
+      <div style={{ fontSize: 12, fontWeight: 700, color: '#1E2A45', marginBottom: 4 }}>
+        How the AVM got here — {comps.length} comparable sale{comps.length === 1 ? '' : 's'}
+      </div>
+      <div style={{ background: '#eef3fb', border: '1px solid #c4d6f2', borderRadius: 6, padding: '6px 10px', marginBottom: 6, fontSize: 12 }}>
+        <b>Subject:</b> {s.address || '—'} · {s.beds != null ? `${s.beds} bd` : 'beds ?'} · {s.baths != null ? `${s.baths} ba` : 'baths ?'} · {s.sqft != null ? `${Number(s.sqft).toLocaleString()} sf` : 'sqft ?'}{s.year_built ? ` · built ${s.year_built}` : ''}
+        {(s.beds == null || s.sqft == null) && <span style={{ ...srcStyle, color: '#C8851A' }}> — enter beds/baths/sqft above for a sharper comp match.</span>}
+      </div>
+      <div style={{ overflowX: 'auto' }}>
+        <table style={{ borderCollapse: 'collapse', width: '100%', minWidth: 640 }}>
+          <thead><tr>
+            {['Address', 'Beds', 'Baths', 'SqFt', 'Sale/List $', 'Dist (mi)', 'Age (d)'].map((h, i) => (
+              <th key={i} style={{ ...th, textAlign: i === 0 ? 'left' : 'right' }}>{h}</th>
+            ))}
+          </tr></thead>
+          <tbody>
+            {comps.map((c, i) => (
+              <tr key={i} style={{ background: i % 2 ? '#f7f9fd' : '#fff' }}>
+                <td style={{ ...td, textAlign: 'left' }}>
+                  {c.link ? <a href={c.link} target="_blank" rel="noreferrer" style={{ color: '#1E2A45' }}>{c.address || '—'}</a> : (c.address || '—')}
+                </td>
+                <td style={{ ...td, ...(mism(c.beds, s.beds) ? warn : {}) }}>{c.beds ?? '—'}</td>
+                <td style={{ ...td, ...(mism(c.baths, s.baths) ? warn : {}) }}>{c.baths ?? '—'}</td>
+                <td style={{ ...td, ...(sqftOff(c.sqft) ? warn : {}) }}>{c.sqft != null ? Number(c.sqft).toLocaleString() : '—'}</td>
+                <td style={td}>{money(c.price)}</td>
+                <td style={td}>{c.distance_mi ?? '—'}</td>
+                <td style={td}>{c.days_old ?? '—'}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <p style={{ ...srcStyle, marginTop: 4 }}>
+        Addresses link to their Zillow page. <span style={warn}>Red</span> = that comp differs from the subject (different bed/bath count, or sqft more than 25% off) — weigh those comps with caution. Source: RentCast (MLS + public records).
+      </p>
+    </div>
+  )
+}
+
 // Plain-English math rows (replaces the raw JSON dump).
 function MathRows({ rows }) {
   if (!rows || !rows.length) return null
@@ -1094,6 +1152,7 @@ function Results({ r }) {
             <Val label={r.isIncome ? 'Residential AVM (reference only — not used for income valuation)' : 'AVM / Estimated Market Value'} value={money(comps.avm?.value)} source={comps.avm?.source || 'Data Enrichment'} />
             {comps.avm && (comps.avm.low || comps.avm.high) && <Val label="AVM Range" value={`${money(comps.avm.low)} – ${money(comps.avm.high)}`} source={comps.avm.source} />}
             <TwoCompSources primary={comps.avm} secondary={comps.avm2} />
+            <CompEvidence subject={comps.subject} comps={comps.comparables} />
             {comps.avm?.rent_estimate != null && <Val label="Rent Estimate" value={money(comps.avm.rent_estimate) + '/mo'} source={comps.avm.source} />}
             {comps.compContext && <p><b>Comp context:</b> {comps.compContext} <span style={srcStyle}>({comps.sources?.comps || 'Data Enrichment'})</span></p>}
             {comps.flood && <Val label="Flood Zone" value={`${comps.flood.zone || '—'}${comps.flood.sfha ? ' (SFHA — high risk)' : ''}`} source="FEMA via Data Enrichment" />}
