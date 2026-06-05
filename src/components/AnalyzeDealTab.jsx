@@ -132,6 +132,110 @@ function headline(calcType, result) {
   return {}
 }
 
+// ── Retail vs Wholesale offer tiers (presentation layer — NOT bible math) ─────
+// Every deal, every asset type, shows the operator BOTH choices so a number like
+// "$286,800 on a $424,000 house" reads as an investor/wholesale offer — not a
+// mistake. Retail = market/listing value (what it sells for at retail); Wholesale
+// = the discounted investor offer (the lower number). Pure presentation; the
+// frozen Math Bible numbers are unchanged.
+function offerTiers(r) {
+  const h = r.headline || {}
+  if (r.matrix) {
+    const s = r.matrix.summary
+    return {
+      retail: s.aggressiveValue ?? null,
+      wholesale: s.conservativeValue ?? null,
+      retailLabel: 'Retail / Market Value',
+      wholesaleLabel: 'Wholesale / Investor Offer',
+      retailSrc: 'Math Bible — aggressive (1.15 DSCR) value',
+      wholesaleSrc: 'Math Bible — conservative (1.25 DSCR) offer',
+      note: 'Retail = the most a full-price buyer could justify. Wholesale = the prudent investor offer that keeps margin.'
+    }
+  }
+  const isFlip = r.calcTypeUsed === 'residential_mao'
+  return {
+    retail: h.estValue ?? null,
+    wholesale: (h.maxOffer != null) ? h.maxOffer : null,
+    retailLabel: isFlip ? 'Retail Offer (Listing / Market)' : 'Retail / Market Value',
+    wholesaleLabel: 'Wholesale Offer (Investor)',
+    retailSrc: r.compSeeded ? 'Comp-seeded market value (preliminary)' : (isFlip ? 'After-Repair Value — what it sells for fixed up' : 'Bible math'),
+    wholesaleSrc: r.compSeeded ? 'PRELIMINARY — confirm ARV/rehab' : 'Bible math (70% rule − fees − repairs)',
+    note: isFlip
+      ? 'Retail = the list / resale value once fixed up. Wholesale = the most an investor pays to flip it and keep margin (70% of value, minus repairs and fee). A house needing no repairs still shows a wholesale number — that is the investor price, not the market price.'
+      : 'Retail = market value. Wholesale = the lower investor offer.'
+  }
+}
+
+// Human-readable math (no JSON). Returns [{label, value, note}] rows so the
+// operator sees the steps in plain English instead of a code dump.
+function humanMath(r) {
+  const c = r.calc || {}
+  const ct = r.calcTypeUsed || ''
+  const rows = []
+  if (ct === 'residential_mao') {
+    rows.push({ label: 'After-Repair Value (ARV)', value: money(c.arv), note: 'what the home sells for fully fixed up' })
+    rows.push({ label: `× ${Math.round((c.maoFactor ?? 0.7) * 100)}% investor rule`, value: money(c.step1) })
+    rows.push({ label: `− ${money(c.wholesaleFee)} assignment / wholesale fee`, value: money(c.step2) })
+    rows.push({ label: `− ${money(c.rehab)} estimated repairs`, value: money(c.maxOffer), note: 'Wholesale Offer — the most an investor pays' })
+    return rows
+  }
+  if (ct === 'residential_dscr') {
+    rows.push({ label: 'Net Operating Income (NOI)', value: money(c.annualNOI) })
+    rows.push({ label: 'Supported purchase price', value: money(c.purchase) })
+    rows.push({ label: 'Bank loan (80% LTV)', value: money(c.loan) })
+    rows.push({ label: 'Debt-service coverage (DSCR)', value: c.dscr != null ? Number(c.dscr).toFixed(2) : '—', note: 'target ≥ 1.25' })
+    rows.push({ label: 'Annual cash flow (pocket)', value: money(c.pocketCashAnnual) })
+    return rows
+  }
+  // Generic fallback — humanize the known numeric fields, skip the rest.
+  const LABELS = {
+    noi: 'NOI', maxPurchase: 'Max purchase', yourOffer: 'Your offer', maxOffer: 'Max offer',
+    arv: 'ARV', rehab: 'Estimated repairs', gross: 'Gross income', expenses: 'Expenses',
+    bankLoan: 'Bank loan', annualDS: 'Annual debt service', actualDSCR: 'DSCR', capRate: 'Cap rate'
+  }
+  for (const [k, v] of Object.entries(c)) {
+    if (typeof v !== 'number' || !LABELS[k]) continue
+    rows.push({ label: LABELS[k], value: /dscr|caprate/i.test(k) ? Number(v).toFixed(2) : money(v) })
+  }
+  return rows
+}
+
+// Two-tier offer display: Retail (Listing / Market) vs Wholesale (Investor).
+function OfferTiers({ tiers }) {
+  return (
+    <div>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, margin: '10px 0 6px' }}>
+        <div style={{ background: '#eaf2ff', border: '1px solid #b9cdf0', borderRadius: 8, padding: '10px 12px' }}>
+          <div style={{ fontSize: 12, fontWeight: 700, color: '#1E2A45' }}>{tiers.retailLabel}</div>
+          <div style={{ fontSize: 24, fontWeight: 800, color: '#0A0F2C' }}>{tiers.retail != null ? money(tiers.retail) : '—'}</div>
+          <div style={srcStyle}>{tiers.retailSrc}</div>
+        </div>
+        <div style={{ background: '#fff4e0', border: '1px solid #e3c685', borderRadius: 8, padding: '10px 12px' }}>
+          <div style={{ fontSize: 12, fontWeight: 700, color: '#1E2A45' }}>{tiers.wholesaleLabel}</div>
+          <div style={{ fontSize: 24, fontWeight: 800, color: '#9a6700' }}>{tiers.wholesale != null ? money(tiers.wholesale) : '—'}</div>
+          <div style={srcStyle}>{tiers.wholesale != null ? tiers.wholesaleSrc : 'Not applicable for this hold / rental analysis'}</div>
+        </div>
+      </div>
+      <p style={{ ...srcStyle, margin: '0 0 4px' }}>{tiers.note}</p>
+    </div>
+  )
+}
+
+// Plain-English math rows (replaces the raw JSON dump).
+function MathRows({ rows }) {
+  if (!rows || !rows.length) return null
+  return (
+    <div style={{ display: 'grid', gap: 4, marginTop: 8 }}>
+      {rows.map((row, i) => (
+        <div key={i} style={{ display: 'flex', justifyContent: 'space-between', gap: 12, padding: '6px 10px', background: i % 2 ? '#f7f9fd' : '#fff', borderRadius: 6 }}>
+          <span style={{ fontSize: 13, color: '#1E2A45' }}>{row.label}{row.note && <span style={srcStyle}> — {row.note}</span>}</span>
+          <span style={{ fontSize: 14, fontWeight: 700, color: '#0A0F2C', whiteSpace: 'nowrap' }}>{row.value}</span>
+        </div>
+      ))}
+    </div>
+  )
+}
+
 // Transparent recommendation rule (presentation layer — not bible math).
 function recommend({ asking, maxOffer, estValue, dscrPass, typeImplemented, hasMath, isIncome, compSeeded, seedNote }) {
   // Distinguish "no engine for this type" from "engine exists but we lack inputs".
@@ -226,6 +330,7 @@ function ExecutiveSummary({ r }) {
   return (
     <div style={{ ...card, borderLeft: '6px solid #C9A84C' }}>
       <h3 style={h3}>Executive Summary — The Answer</h3>
+      <OfferTiers tiers={offerTiers(r)} />
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
         <Val label="NOI Used" value={money(s.noi)} source={r.noiBasis || 'Calculated'} />
         <Val label="Asset Type" value={r.propertyType} source="User selection" />
@@ -784,12 +889,13 @@ function Results({ r }) {
         <div style={{ fontSize: 26, fontWeight: 800, color: vColor }}>{r.recommendation.verdict}</div>
         <p style={{ margin: '4px 0' }}>{r.recommendation.basis}</p>
         {!r.matrix && (
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginTop: 8 }}>
-            <Val label="Seller Asking" value={money(r.inputs.askingPrice || ex?.asking)} source={r.inputs.askingPrice ? 'User input' : (ex?.asking ? 'Extracted document' : 'n/a')} />
-            <Val label="Estimated Value / Max Purchase" value={money(r.headline.estValue)} source={r.compSeeded ? 'Comp-seeded (preliminary) — bible math' : 'Baby Analyzer (bible math)'} />
-            <Val label="Max Recommended Offer" value={money(r.headline.maxOffer)} source={r.compSeeded ? 'PRELIMINARY — comp-seeded, confirm ARV/rehab' : 'Baby Analyzer calculation'} />
-            <Val label="DSCR" value={r.headline.dscr != null ? Number(r.headline.dscr).toFixed(2) : '—'} source="Baby Analyzer calculation" />
-          </div>
+          <>
+            <OfferTiers tiers={offerTiers(r)} />
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginTop: 4 }}>
+              <Val label="Seller Asking" value={money(r.inputs.askingPrice || ex?.asking)} source={r.inputs.askingPrice ? 'User input' : (ex?.asking ? 'Extracted document' : 'n/a')} />
+              <Val label="DSCR" value={r.headline.dscr != null ? Number(r.headline.dscr).toFixed(2) : '—'} source="Baby Analyzer calculation" />
+            </div>
+          </>
         )}
       </div>
 
@@ -831,14 +937,14 @@ function Results({ r }) {
           : <p style={{ color: '#C8851A', fontWeight: 600 }}>Insufficient inputs to compute — data captured and saved.</p>)}
         {r.calc && (
           <>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-              <Val label="NOI used" value={money(r.headline.noiUsed)} source={r.brokerNOI && r.calcNOI === r.brokerNOI ? 'Broker NOI (no override entered)' : 'User input / derived'} />
-              <Val label="Estimated Value / Max Purchase" value={money(r.headline.estValue)} source="Bible math" />
-              <Val label="Max Offer" value={money(r.headline.maxOffer)} source="Bible math (incl. wholesale fee)" />
-              <Val label="DSCR" value={r.headline.dscr != null ? Number(r.headline.dscr).toFixed(3) : '—'} source="Bible math" />
-            </div>
+            <OfferTiers tiers={offerTiers(r)} />
+            <div style={{ fontSize: 13, fontWeight: 700, color: '#1E2A45', margin: '8px 0 2px' }}>How we got there</div>
+            <MathRows rows={humanMath(r)} />
+            {r.headline.noiUsed != null && (
+              <p style={srcStyle}>NOI used: {money(r.headline.noiUsed)} ({r.brokerNOI && r.calcNOI === r.brokerNOI ? 'broker NOI, no override entered' : 'user input / derived'}).</p>
+            )}
             <details style={{ marginTop: 8 }}>
-              <summary style={{ cursor: 'pointer', fontWeight: 600 }}>Detailed math (raw calc output)</summary>
+              <summary style={{ cursor: 'pointer', fontWeight: 600, fontSize: 12, color: '#6b7280' }}>Developer view (raw calc output)</summary>
               <pre style={{ background: '#f4f6fb', padding: 10, borderRadius: 6, overflow: 'auto', fontSize: 12 }}>{JSON.stringify(r.calc, null, 2)}</pre>
             </details>
           </>
@@ -1026,9 +1132,19 @@ Pocket Money: ${money(s.pocketRange[0])} – ${money(s.pocketRange[1])}</pre>`)
     rows.push(`<h3>Financing Matrix</h3><table border="1" cellpadding="4" style="border-collapse:collapse"><tr>${cols.map(c => `<th>${c}</th>`).join('')}</tr>${trs}</table>`)
     rows.push(`<h3>Practical Recommendation</h3><p>${r.matrix.recommendation.headline}</p><ul>${r.matrix.recommendation.notes.map(n => `<li>${n}</li>`).join('')}</ul>`)
   }
-  rows.push(`<h3>Headline</h3><pre>${JSON.stringify(r.headline, null, 2)}</pre>`)
+  const t = offerTiers(r)
+  rows.push(`<h3>Your Two Choices</h3>
+<table border="1" cellpadding="6" style="border-collapse:collapse">
+<tr><th>${t.retailLabel}</th><th>${t.wholesaleLabel}</th></tr>
+<tr><td>${t.retail != null ? money(t.retail) : '—'}</td><td>${t.wholesale != null ? money(t.wholesale) : '—'}</td></tr>
+</table>
+<p><i>${t.note}</i></p>`)
+  if (r.calc) {
+    const mr = humanMath(r).map(x => `<tr><td>${x.label}${x.note ? ` <i>(${x.note})</i>` : ''}</td><td style="text-align:right">${x.value}</td></tr>`).join('')
+    rows.push(`<h3>How We Got There</h3><table border="1" cellpadding="6" style="border-collapse:collapse">${mr}</table>`)
+  }
   rows.push(`<h3>Raw Extracted</h3><pre>${JSON.stringify(r.extracted, null, 2)}</pre>`)
-  rows.push(`<h3>Calculations</h3><pre>${JSON.stringify(r.calc, null, 2)}</pre>`)
+  rows.push(`<details><summary>Developer view (raw calc + headline)</summary><pre>${JSON.stringify({ headline: r.headline, calc: r.calc }, null, 2)}</pre></details>`)
   rows.push(`<h3>Comps</h3><pre>${JSON.stringify(r.comps, null, 2)}</pre>`)
   rows.push(`<h3>Photos / Rehab</h3><pre>${JSON.stringify(r.photoRes, null, 2)}</pre>`)
   rows.push(`<h3>Missing</h3><ul>${r.missing.map(m => `<li>${m}</li>`).join('')}</ul>`)
