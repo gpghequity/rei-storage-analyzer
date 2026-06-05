@@ -457,12 +457,22 @@ export default function AnalyzeDealTab({ sharedUrlState, deepUrlState }) {
       // Comp-seed: with only an address (no ARV / rent typed), seed the offer math
       // from the comp AVM so the operator still gets a PRELIMINARY ballpark instead
       // of a dead "REVIEW". Clearly flagged downstream — never promoted to a real
-      // PURSUE/NEGOTIATE verdict, and rehab is assumed $0 until the operator confirms.
+      // PURSUE/NEGOTIATE verdict. Flip rehab is assumed $0 unless square footage is
+      // known (then a medium national benchmark), until the operator confirms.
       const avm = orch.comps?.avm || null
-      const compSeed = { arv: false, rent: false, purchase: false }
+      const compSeed = { arv: false, rent: false, purchase: false, rehab: false }
       if (avm && typeId === 'residential' && !isIncomeAsset(typeId)) {
         if (mode === 'flip' && !num(calcFields.arv) && num(avm.value) > 0) {
           calcFields.arv = avm.value; compSeed.arv = true
+          // With NO rehab signal at all (no manual entry, no condition answers) but a
+          // known square footage, assume a medium national benchmark so the preliminary
+          // isn't an artificially-high $0-rehab ceiling. A manual rehab or condition
+          // answers (applied below) always take precedence.
+          const sf = num(calcFields.sqft)
+          if (!num(calcFields.rehab) && !(rehabCondition > 0) && sf > 0) {
+            calcFields.rehab = Math.round(sf * NATIONAL_PSF.medium_rehab * REGIONAL_ADJ)
+            compSeed.rehab = true
+          }
         }
         if (mode === 'rental') {
           if (!num(calcFields.grossIncome) && num(avm.rent_estimate) > 0) {
@@ -474,7 +484,7 @@ export default function AnalyzeDealTab({ sharedUrlState, deepUrlState }) {
         }
       }
       const seedBits = []
-      if (compSeed.arv) seedBits.push(`ARV seeded from ${avm.source || 'AVM'} ${money(avm.value)}, rehab assumed $0`)
+      if (compSeed.arv) seedBits.push(`ARV seeded from ${avm.source || 'AVM'} ${money(avm.value)}, ${compSeed.rehab ? `rehab at national benchmark ${money(calcFields.rehab)} (${num(calcFields.sqft)} sf × medium)` : 'rehab assumed $0'}`)
       if (compSeed.rent) seedBits.push(`rent seeded from ${avm.source || 'AVM'} ${money(avm.rent_estimate)}/mo`)
       if (compSeed.purchase) seedBits.push(`purchase seeded from AVM ${money(avm.value)}`)
       const compSeeded = seedBits.length > 0
