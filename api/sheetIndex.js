@@ -12,6 +12,20 @@
 
 import { getSheets } from './googleClients.js';
 
+const COLS = [
+  'property_id', 'version', 'is_current', 'edited_on', 'edited_by', 'edit_reason',
+  'address', 'city', 'state', 'zip', 'county', 'asset_type',
+  'stage', 'stage_changed_on',
+  'asking_price', 'arv', 'rehab_estimate', 'noi', 'units', 'monthly_rent',
+  'verdict', 'composite_score', 'one_line_summary',
+  'drive_folder_url', 'last_tool_touch',
+  'source', 'submitter_name', 'submitter_email', 'submitter_phone',
+  'internal_notes',
+  'verdict_confidence', 'recommended_offer', 'recommended_offer_basis',
+  'key_strengths', 'key_risks', 'red_flags',
+  'questions_for_review', 'enrichment_log'
+];
+
 // Route to asset-type-specific tab. Fallback to Properties if unmapped.
 function getTabForAssetType(assetType) {
   const mapping = {
@@ -63,20 +77,6 @@ async function ensureTabExists(sheets, tabName) {
     }
   }
 }
-
-const COLS = [
-  'property_id', 'version', 'is_current', 'edited_on', 'edited_by', 'edit_reason',
-  'address', 'city', 'state', 'zip', 'county', 'asset_type',
-  'stage', 'stage_changed_on',
-  'asking_price', 'arv', 'rehab_estimate', 'noi', 'units', 'monthly_rent',
-  'verdict', 'composite_score', 'one_line_summary',
-  'drive_folder_url', 'last_tool_touch',
-  'source', 'submitter_name', 'submitter_email', 'submitter_phone',
-  'internal_notes',
-  'verdict_confidence', 'recommended_offer', 'recommended_offer_basis',
-  'key_strengths', 'key_risks', 'red_flags',
-  'questions_for_review', 'enrichment_log'
-];
 
 const META_COLS = new Set(['property_id', 'version', 'is_current', 'edited_on', 'edited_by', 'edit_reason']);
 
