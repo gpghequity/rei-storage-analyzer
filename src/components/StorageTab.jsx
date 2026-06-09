@@ -47,7 +47,7 @@ function buildInitial(urlState, sharedUrlState) {
   }
 }
 
-export default function StorageTab({ urlState, sharedUrlState }) {
+export default function StorageTab({ urlState, sharedUrlState, rehab = 0 }) {
   const [inputs, setInputs] = useState(() => buildInitial(urlState, sharedUrlState))
   const [results, setResults] = useState(null)
 
@@ -66,6 +66,7 @@ export default function StorageTab({ urlState, sharedUrlState }) {
       grossDollarsIn: g,
       sellerStatedExpensePct: e,
       annualOpEx: op,
+      rehab,
       kickerOptions: {
         growthRate: parseFloat(inputs.growthRate) || 0.03,
         pct: C.PCT_DEFAULT,

@@ -1014,7 +1014,7 @@ export default function AnalyzeDealTab({ sharedUrlState, deepUrlState }) {
       ) : isLand ? (
         // Land has no guided offer engine — the dedicated land intake IS the screen.
         <div className="no-print">
-          <DeepComp sharedUrlState={sharedUrlState} />
+          <DeepComp sharedUrlState={sharedUrlState} rehab={rehabCondition} />
         </div>
       ) : (<>
       <div style={card} className="no-print">
@@ -1112,7 +1112,7 @@ export default function AnalyzeDealTab({ sharedUrlState, deepUrlState }) {
           <p style={{ ...srcStyle, margin: '6px 0 10px' }}>
             The guided analysis above is the normal path (documents, photos, comps + offer). Open this only to hand-enter every financing scenario yourself: {deep.extras}. Same Math Bible engine — nothing here changes the numbers above.
           </p>
-          {advancedOpen && <DeepComp urlState={deepUrl} sharedUrlState={sharedUrlState} />}
+          {advancedOpen && <DeepComp urlState={deepUrl} sharedUrlState={sharedUrlState} rehab={rehabCondition} />}
         </details>
       )}
       </>)}

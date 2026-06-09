@@ -11,7 +11,7 @@ import * as sunset from './sunsetTest.js'
 import * as ramp from './rampTest.js'
 
 export function runStorageDeal(dealInputs) {
-  const { grossDollarsIn, sellerStatedExpensePct, annualOpEx, kickerOptions } = dealInputs
+  const { grossDollarsIn, sellerStatedExpensePct, annualOpEx, kickerOptions, rehab = 0 } = dealInputs
 
   const noiResult = storage.storageNOI(grossDollarsIn, sellerStatedExpensePct)
   const noi = noiResult.noi
@@ -22,7 +22,7 @@ export function runStorageDeal(dealInputs) {
 
   for (const lens of lenses) {
     for (const treatment of treatments) {
-      const result = storage.groupA_maxPurchase(noi, lens)
+      const result = storage.groupA_maxPurchase(noi, lens, rehab)
       const equityCost = storage.ownerEquityCost(result.equityAmount, treatment)
       const pocket = storage.pocketCash(noi, result.bankAnnualDS, 0, equityCost, 0)
       const equityReq = storage.groupA_equityRequirement(result.maxPurchase, result.bankAnnualDS, annualOpEx)
@@ -33,7 +33,7 @@ export function runStorageDeal(dealInputs) {
 
   for (const lens of lenses) {
     for (const treatment of treatments) {
-      const result = storage.groupB_maxPurchase(noi, lens)
+      const result = storage.groupB_maxPurchase(noi, lens, rehab)
       const equityCost = storage.ownerEquityCost(result.equityAmount, treatment)
       const pocket = storage.pocketCash(noi, 0, result.sellerAnnualDS, equityCost, 0)
       const rampResult = result.requiresRampTest ? ramp.rampTest(noi, result.sellerAnnualDS) : null
@@ -45,7 +45,7 @@ export function runStorageDeal(dealInputs) {
   }
 
   for (const lens of lenses) {
-    const result = storage.groupC_maxPurchase(noi, lens)
+    const result = storage.groupC_maxPurchase(noi, lens, rehab)
     const pocket = storage.pocketCash(noi, result.bankAnnualDS, result.sellerAnnualPI, 0, 0)
     const rampResult = result.requiresRampTest ? ramp.rampTest(noi, result.bankAnnualDS) : null
     const entryCap = noi / result.maxPurchase

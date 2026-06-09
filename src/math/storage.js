@@ -24,7 +24,7 @@ export function storageNOI(grossDollarsIn, sellerStatedExpensePct) {
   }
 }
 
-export function groupA_maxPurchase(noi, dscrLens) {
+export function groupA_maxPurchase(noi, dscrLens, rehab = 0) {
   const C = loadConstants()
   const annualBankFactor = C.LTV_STORAGE * C.K_BANK_STORAGE
   const maxPurchase = noi / (dscrLens * annualBankFactor)
@@ -33,14 +33,14 @@ export function groupA_maxPurchase(noi, dscrLens) {
     group: 'A',
     dscrLens,
     maxPurchase: rounded,
-    yourOffer: rounded - C.WHOLESALE_FEE,
+    yourOffer: rounded - C.WHOLESALE_FEE - (rehab || 0),
     bankAnnualDS: rounded * annualBankFactor,
     equityAmount: rounded * (1 - C.LTV_STORAGE),
     requiresRampTest: dscrLens === C.DSCR_STRETCH
   }
 }
 
-export function groupB_maxPurchase(noi, dscrLens) {
+export function groupB_maxPurchase(noi, dscrLens, rehab = 0) {
   const C = loadConstants()
   const annualSellerFactor = C.LTV_STORAGE * C.K_SELLER
   const maxPurchase = noi / (dscrLens * annualSellerFactor)
@@ -49,7 +49,7 @@ export function groupB_maxPurchase(noi, dscrLens) {
     group: 'B',
     dscrLens,
     maxPurchase: rounded,
-    yourOffer: rounded - C.WHOLESALE_FEE,
+    yourOffer: rounded - C.WHOLESALE_FEE - (rehab || 0),
     sellerAnnualDS: rounded * annualSellerFactor,
     equityAmount: rounded * (1 - C.LTV_STORAGE),
     dscrInformational: true,
@@ -57,7 +57,7 @@ export function groupB_maxPurchase(noi, dscrLens) {
   }
 }
 
-export function groupC_maxPurchase(noi, dscrLens) {
+export function groupC_maxPurchase(noi, dscrLens, rehab = 0) {
   const C = loadConstants()
   const annualBankFactor = C.LTV_STORAGE * C.K_BANK_STORAGE
   const maxPurchase = noi / (dscrLens * annualBankFactor)
@@ -67,7 +67,7 @@ export function groupC_maxPurchase(noi, dscrLens) {
     group: 'C',
     dscrLens,
     maxPurchase: rounded,
-    yourOffer: rounded - C.WHOLESALE_FEE,
+    yourOffer: rounded - C.WHOLESALE_FEE - (rehab || 0),
     bankAnnualDS: rounded * annualBankFactor,
     sellerAnnualPI: equityAmount * C.K_SELLER,
     equityAmount,
