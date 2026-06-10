@@ -855,10 +855,11 @@ export default function AnalyzeDealTab({ sharedUrlState, deepUrlState }) {
       let calc = null, head = {}, calcTypeUsed = null, matrix = null, noiBasis = null
 
       // ── FORCED: If user entered income, compute it. No conditions. ──
-      const grossN = num(calcFields.grossIncome)
-      const expDollars = num(calcFields.expenses)
-      const expRatio = num(calcFields.expenseRatio)
-      let matrixNOI = num(calcFields.noi)
+      // READ DIRECTLY FROM FORM STATE AS FALLBACK (defensive)
+      const grossN = num(calcFields.grossIncome || fields.grossIncome)
+      const expDollars = num(calcFields.expenses || fields.expenses)
+      const expRatio = num(calcFields.expenseRatio || fields.expenseRatio)
+      let matrixNOI = num(calcFields.noi || fields.noi)
 
       // If no explicit NOI but user entered income, compute it
       if (!matrixNOI && grossN > 0) {
@@ -929,7 +930,8 @@ export default function AnalyzeDealTab({ sharedUrlState, deepUrlState }) {
       const hasMath = Boolean(matrix) || Boolean(calc)
 
       // 3) Recommendation (transparent rule).
-      const manualIncome = num(calcFields.grossIncome) > 0 || num(calcFields.expenses) > 0 || num(calcFields.expenseRatio) > 0
+      // READ DIRECTLY FROM FORM STATE AS FALLBACK (defensive)
+      const manualIncome = num(fields.grossIncome) > 0 || num(fields.expenses) > 0 || num(fields.expenseRatio) > 0
       const rec = recommend({
         asking: calcFields.askingPrice, maxOffer: head.maxOffer, estValue: head.estValue,
         dscrPass: head.dscrPass, typeImplemented: type.implemented, hasMath,
