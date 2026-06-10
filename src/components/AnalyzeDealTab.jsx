@@ -393,14 +393,18 @@ function MathRows({ rows }) {
 }
 
 // Transparent recommendation rule (presentation layer — not bible math).
-function recommend({ asking, maxOffer, estValue, dscrPass, typeImplemented, hasMath, isIncome, compSeeded, seedNote }) {
+function recommend({ asking, maxOffer, estValue, dscrPass, typeImplemented, hasMath, isIncome, compSeeded, seedNote, manualIncome }) {
   // Distinguish "no engine for this type" from "engine exists but we lack inputs".
   if (!typeImplemented) {
     return { verdict: 'INTAKE ONLY', basis: 'No analysis engine exists for this property type yet — data captured and saved.' }
   }
   if (!hasMath) {
+    // If user entered income manually but math still failed, tell them to check their input.
+    if (isIncome && manualIncome) {
+      return { verdict: 'REVIEW', basis: 'Income was entered, but math could not complete. Check that Gross Income and Annual Operating Expenses are both filled and valid (numbers only, no text). If blank, enter a value or upload an OM / T-12 / rent roll.' }
+    }
     return isIncome
-      ? { verdict: 'NEEDS INCOME', basis: 'This asset type IS supported — it just needs income. Enter NOI (or Gross Income + expense ratio) above, or upload an OM / T-12 / rent roll that states them, then re-run. Data captured and saved.' }
+      ? { verdict: 'NEEDS INCOME', basis: 'This asset type IS supported — it just needs income. Enter Gross Annual Income + Annual Operating Expenses above, or upload an OM / T-12 / rent roll, then re-run. Data captured and saved.' }
       : { verdict: 'REVIEW', basis: 'Not enough inputs to compute an offer; review captured data and add the missing fields.' }
   }
   const ask = num(asking)
@@ -788,11 +792,15 @@ export default function AnalyzeDealTab({ sharedUrlState, deepUrlState }) {
         }
       }
 
-      // 2) Compute headline via existing bible math (/api/calc). Prefer user fields; fall back to extracted.
+      // 2) Compute headline via existing bible math (/api/calc). User fields win; extracted fills gaps.
+      // CRITICAL: calcFields must include manual form values even if extraction fails.
+      // Line 792 ensures this: calcFields = {...fields} copies the form state BEFORE extraction fallback.
       const calcFields = { ...fields }
+      // Only merge extracted data into gaps — never overwrite manual user entry.
       if (extractedNorm) {
         if (!num(calcFields.noi) && extractedNorm.brokerNOI) calcFields.noi = extractedNorm.brokerNOI
         if (!num(calcFields.grossIncome) && extractedNorm.grossIncome) calcFields.grossIncome = extractedNorm.grossIncome
+        if (!num(calcFields.expenses) && extractedNorm.expenses) calcFields.expenses = extractedNorm.expenses
         if (!num(calcFields.askingPrice) && extractedNorm.asking) calcFields.askingPrice = extractedNorm.asking
       }
       // Comp-seed: with only an address (no ARV / rent typed), seed the offer math
@@ -840,7 +848,12 @@ export default function AnalyzeDealTab({ sharedUrlState, deepUrlState }) {
       if (isIncomeAsset(typeId)) {
         const grossN = num(calcFields.grossIncome)
         const expDollars = num(calcFields.expenses)
+        const expRatio = num(calcFields.expenseRatio)
         let matrixNOI = num(calcFields.noi)
+        // DEBUG: log state if income provided but NOI calc fails
+        if ((grossN > 0 || expRatio > 0) && matrixNOI === 0) {
+          console.warn('[BA] Income asset with income but no NOI:', { grossN, expDollars, expRatio, calcFields })
+        }
         if (matrixNOI > 0) {
           noiBasis = num(fields.noi) ? 'User-entered NOI' : 'Broker/OM NOI (no override)'
         } else if (grossN > 0) {
@@ -903,10 +916,11 @@ export default function AnalyzeDealTab({ sharedUrlState, deepUrlState }) {
       const hasMath = Boolean(matrix) || Boolean(calc)
 
       // 3) Recommendation (transparent rule).
+      const manualIncome = num(calcFields.grossIncome) > 0 || num(calcFields.expenses) > 0 || num(calcFields.expenseRatio) > 0
       const rec = recommend({
         asking: calcFields.askingPrice, maxOffer: head.maxOffer, estValue: head.estValue,
         dscrPass: head.dscrPass, typeImplemented: type.implemented, hasMath,
-        isIncome: isIncomeAsset(typeId), compSeeded, seedNote
+        isIncome: isIncomeAsset(typeId), compSeeded, seedNote, manualIncome
       })
 
       // 4) Broker vs calculated NOI.
