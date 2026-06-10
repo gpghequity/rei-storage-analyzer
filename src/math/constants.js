@@ -71,6 +71,10 @@ export function loadConstants() {
   flat.WINDOW_YEARS   = 5                                          // Projection window for kicker (5 years)
   flat.KICKER_DEFAULT = 0.05                                       // Default kicker rate (5% per year)
 
+  // rampTest and sunsetTest constants
+  flat.NOI_GROWTH_CONSERVATIVE = 0.03                              // 3% annual NOI growth (conservative)
+  flat.K_REFI_15 = annualLoanConstant(0.065, 15)                   // Refi 15-yr @ 6.5% rate
+
   return flat
 }
 
