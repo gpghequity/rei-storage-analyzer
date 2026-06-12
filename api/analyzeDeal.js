@@ -135,7 +135,25 @@ export async function analyzeDeal(req, res) {
         timeout: 15000
       });
       if (evalRes.ok) {
-        riskAnalysis = await evalRes.json();
+        const evalRaw = await evalRes.json();
+        // Map evaluator response to Baby Analyzer's expected format
+        const rec = evalRaw.recommendation || {};
+        riskAnalysis = {
+          riskRating: rec.recommendation === 'STRONG BUY' ? 'Low' : rec.recommendation === 'BUY' ? 'Low' : rec.recommendation === 'CAUTION' ? 'Elevated' : 'High',
+          confidence: evalRaw.transparency?.confidenceLevel || 'Medium',
+          redFlagsCount: (rec.score || 0) < 50 ? 3 : (rec.score || 0) < 70 ? 1 : 0,
+          topRedFlags: (evalRaw.evidence?.redFlags || []).slice(0, 3).map(f => ({ category: 'Market', severity: 'Warning', message: f })),
+          topPositives: (evalRaw.evidence?.opportunities || []).slice(0, 3),
+          documentationStatus: {
+            received: evalRaw.transparency?.basedOn || [],
+            missing: evalRaw.transparency?.morePreciseWith || []
+          },
+          score: rec.score,
+          recommendation: rec.recommendation,
+          basis: rec.basis,
+          transparency: evalRaw.transparency,
+          raw: evalRaw
+        };
       }
     } catch (evalErr) {
       console.warn('[EVALUATOR] Market Reality Engine failed (non-blocking):', evalErr.message);
