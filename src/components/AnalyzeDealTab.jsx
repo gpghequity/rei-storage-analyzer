@@ -326,51 +326,61 @@ function CompEvidence({ subject, comps }) {
 // Embed the rei-rehab-calc SILO (not a copy). Lazy-loads on click so the deal's
 // address + sqft are known when it opens, pre-fills the silo via URL params, and
 // receives the rehab total back via postMessage → feeds the offer math.
-function RehabEmbed({ mode, address, sqft, units, onResult }) {
+function RehabEmbed({ mode, address, sqft, units, onResult, onError }) {
   const [src, setSrc] = useState('')
+  const [msgReceived, setMsgReceived] = useState(false)
   const build = () => {
     const siloMode = mode === 'storage' ? 'storage' : 'residential'
     const p = new URLSearchParams({ embed: '1', mode: siloMode })
     if (address) p.set('address', address)
     if (num(sqft)) p.set('sqft', String(num(sqft)))
     if (num(units)) p.set('units', String(num(units)))
+    setMsgReceived(false) // reset on reload
     setSrc(`${REHAB_CALC_URL}/?${p.toString()}`)
   }
   useEffect(() => {
     function onMsg(e) {
       const d = e.data
-      if (!d || d.type !== 'rei-rehab-total') return
-      const breakdown = (d.lineItems || []).map(li => ({ id: li.id, label: li.label, condition: '', total: li.total }))
-      onResult?.(Number(d.totalRehab) || 0, { breakdown, holdingCost: d.holdingCost, grandTotal: d.grandTotal, flatOverride: d.flatOverride })
+      // Listen for BOTH the rehab total AND any error messages from the silo
+      if (!d) return
+      if (d.type === 'rei-rehab-total') {
+        setMsgReceived(true)
+        const breakdown = (d.lineItems || []).map(li => ({ id: li.id, label: li.label, condition: '', total: li.total }))
+        onResult?.(Number(d.totalRehab) || 0, { breakdown, holdingCost: d.holdingCost, grandTotal: d.grandTotal, flatOverride: d.flatOverride })
+        onError?.(null)
+      } else if (d.type === 'rei-rehab-error') {
+        onError?.(d.message || 'Rehab Calc communication error')
+      }
     }
     window.addEventListener('message', onMsg)
     return () => window.removeEventListener('message', onMsg)
-  }, [onResult])
-  const btn = { padding: '8px 14px', fontSize: 13, fontWeight: 700, borderRadius: 6, border: '1px solid #0A0F2C', background: '#0A0F2C', color: '#C9A84C', cursor: 'pointer' }
-  const isCommercial = mode === 'commercial'
+  }, [onResult, onError])
+  const btn = { padding: ‘8px 14px’, fontSize: 13, fontWeight: 700, borderRadius: 6, border: ‘1px solid #0A0F2C’, background: ‘#0A0F2C’, color: ‘#C9A84C’, cursor: ‘pointer’ }
+  const isCommercial = mode === ‘commercial’
+  const needsSqft = !num(sqft) && src
   return (
     <div>
       {!src ? (
         <div>
           <button type="button" onClick={build} style={btn}>
-            Open Rehab Calc{num(sqft) ? ` — uses this deal’s address & ${num(sqft).toLocaleString()} sf` : ' — enter sqft above for live line pricing'}
+            Open Rehab Calc{num(sqft) ? ` — ${num(sqft).toLocaleString()} sf included` : ‘ — enter sqft above first’}
           </button>
           <p style={{ ...srcStyle, marginTop: 6 }}>
-            This is the live Rehab Calc tool (its own silo) embedded here — the number you land on flows straight into the offer above. Or just use the flat-total box inside it.
+            This is the live Rehab Calc tool (its own silo) embedded here. Your line-item total flows straight into the offer. <span style={{ fontWeight: 600, color: ‘#C8851A’ }}>TIP: Enter Living Square Feet above first, so the national average calculates correctly.</span>
           </p>
         </div>
       ) : (
         <>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6, gap: 8, flexWrap: 'wrap' }}>
-            <span style={srcStyle}>Live Rehab Calc silo — your total feeds the offer automatically.</span>
-            <button type="button" onClick={build} style={{ ...btn, padding: '5px 10px', fontSize: 12 }}>↻ Reload with current sqft</button>
+          <div style={{ display: ‘flex’, justifyContent: ‘space-between’, alignItems: ‘center’, marginBottom: 6, gap: 8, flexWrap: ‘wrap’ }}>
+            <span style={srcStyle}>Live Rehab Calc silo — your total feeds the offer automatically.{needsSqft && <span style={{ color: ‘#C8851A’, fontWeight: 600 }}> (Enter sqft above to calculate national average.)</span>}</span>
+            <button type="button" onClick={build} style={{ ...btn, padding: ‘5px 10px’, fontSize: 12 }}>↻ Reload with current sqft</button>
           </div>
           {isCommercial && (
-            <p style={{ ...srcStyle, color: '#C8851A', marginTop: 0 }}>
+            <p style={{ ...srcStyle, color: ‘#C8851A’, marginTop: 0 }}>
               Commercial line-items aren’t in the Rehab Calc silo yet (residential baseline shown) — use the flat-total box inside it for commercial rehab. Adding commercial lines to the silo is the next step.
             </p>
           )}
-          <iframe title="Rehab Calc" src={src} style={{ width: '100%', height: 640, border: '1px solid #d4dae8', borderRadius: 8, background: '#fff' }} />
+          <iframe title="Rehab Calc" src={src} style={{ width: ‘100%’, height: 640, border: ‘1px solid #d4dae8’, borderRadius: 8, background: ‘#fff’ }} />
         </>
       )}
     </div>
@@ -670,14 +680,35 @@ export default function AnalyzeDealTab({ sharedUrlState, deepUrlState }) {
   // Rehab is the rei-rehab-calc SILO, embedded (see RehabEmbed) — not a copy here.
   const rehabMode = REHAB_MODE[typeId] || 'residential'
   const showRehab = true // every property type & mode shows the rehab questions (per Steve)
+  const [rehabSiloError, setRehabSiloError] = useState(null) // track if silo communication failed
 
   async function analyze() {
     setError(null); setResult(null)
+
+    // ── REQUIRED: address always
     if (!fields.address) { setError('Enter a property address.'); return }
 
-    // DIAGNOSTIC: If user selected income asset but no income in state, tell them exactly what we're seeing
-    if (isIncomeAsset(typeId) && !num(fields.grossIncome) && !num(fields.expenses) && !num(fields.noi)) {
-      setError(`DIAGNOSTIC: Selected ${getType(typeId).label} but no income found in form state. Form shows income but state is empty. This is a form-state sync bug. Fields in state: ${JSON.stringify(fields)}`)
+    // ── CONDITIONAL: based on property type & analysis needs
+    const t = getType(typeId)
+    const missingRequired = []
+
+    // Income assets MUST have NOI source
+    if (isIncomeAsset(typeId)) {
+      const hasIncome = num(fields.grossIncome) || num(fields.noi)
+      const hasExpense = num(fields.expenses) || num(fields.expenseRatio) || num(fields.noi)
+      if (!hasIncome) missingRequired.push(`Gross Annual Income or NOI (required for ${t.label})`)
+      if (!hasExpense) missingRequired.push(`Annual Operating Expenses or Expense Ratio (required for ${t.label})`)
+    }
+
+    // Residential flip needs ARV or rehab estimate
+    if (typeId === 'residential' && mode === 'flip') {
+      if (!num(fields.arv) && rehabCondition <= 0 && !num(fields.rehab)) {
+        missingRequired.push('After-Repair Value (ARV) OR Property Condition answers (use Rehab Calc above)')
+      }
+    }
+
+    if (missingRequired.length > 0) {
+      setError(`Missing required information:\n${missingRequired.map(m => `• ${m}`).join('\n')}`)
       return
     }
 
@@ -1127,14 +1158,17 @@ export default function AnalyzeDealTab({ sharedUrlState, deepUrlState }) {
             units={fields.units}
             onResult={(total, detail) => {
               setRehabCondition(total)
+              setRehabSiloError(null)
               // National-average cross-check from the benchmark constant (a small
               // snapshot, not the rehab tool) so the report keeps that column.
+              // Uses medium_rehab as a middle estimate unless photo data refines it.
               const area = num(fields.sqft) || 0
               const national = area > 0
                 ? { area, psf: Math.round(NATIONAL_PSF.medium_rehab * REGIONAL_ADJ), total: Math.round(area * NATIONAL_PSF.medium_rehab * REGIONAL_ADJ), tier: 'medium' }
                 : null
               setRehabDetail({ ...detail, national })
             }}
+            onError={(err) => setRehabSiloError(err)}
           />
         </div>
       )}
@@ -1528,23 +1562,23 @@ function Results({ r }) {
       {(r.rehabCondition != null || r.rehabPhoto != null) && (
         <div style={card}>
           <h3 style={h3}>Rehab — Human vs Photo · Your Numbers vs National Average</h3>
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ borderCollapse: 'collapse', width: '100%', minWidth: 420 }}>
+          <div style={{ overflowX: ‘auto’ }}>
+            <table style={{ borderCollapse: ‘collapse’, width: ‘100%’, minWidth: 420 }}>
               <thead><tr>
-                {['Source', 'Your numbers', 'National average'].map((h, i) => (
-                  <th key={i} style={{ padding: '6px 10px', background: '#0A0F2C', color: '#fff', fontSize: 12, textAlign: i ? 'right' : 'left' }}>{h}</th>
+                {[‘Source’, ‘Your numbers’, ‘National average’].map((h, i) => (
+                  <th key={i} style={{ padding: ‘6px 10px’, background: ‘#0A0F2C’, color: ‘#fff’, fontSize: 12, textAlign: i ? ‘right’ : ‘left’ }}>{h}</th>
                 ))}
               </tr></thead>
               <tbody>
                 <tr>
-                  <td style={{ padding: '6px 10px', fontWeight: 600, borderBottom: '1px solid #eef1f7' }}>Human (condition answers)</td>
-                  <td style={{ padding: '6px 10px', textAlign: 'right', borderBottom: '1px solid #eef1f7' }}>{money(r.rehabCondition)}</td>
-                  <td style={{ padding: '6px 10px', textAlign: 'right', borderBottom: '1px solid #eef1f7' }}>{r.rehabConditionNational != null ? money(r.rehabConditionNational) : '—'}</td>
+                  <td style={{ padding: ‘6px 10px’, fontWeight: 600, borderBottom: ‘1px solid #eef1f7’ }}>Human (condition answers)</td>
+                  <td style={{ padding: ‘6px 10px’, textAlign: ‘right’, borderBottom: ‘1px solid #eef1f7’, color: r.rehabCondition > 0 ? ‘#0A0F2C’ : ‘#9ca3af’ }}>{r.rehabCondition > 0 ? money(r.rehabCondition) : ‘— (fill out above)’}</td>
+                  <td style={{ padding: ‘6px 10px’, textAlign: ‘right’, borderBottom: ‘1px solid #eef1f7’ }}>{r.rehabConditionNational != null ? money(r.rehabConditionNational) : (r.inputs.sqft ? ‘—‘ : ‘— (need sqft)’)}</td>
                 </tr>
-                <tr style={{ background: '#f7f9fd' }}>
-                  <td style={{ padding: '6px 10px', fontWeight: 600 }}>Photo (pic-rehab read)</td>
-                  <td style={{ padding: '6px 10px', textAlign: 'right' }}>{r.rehabPhoto != null ? money(r.rehabPhoto) : '—'}</td>
-                  <td style={{ padding: '6px 10px', textAlign: 'right' }}>{r.rehabPhotoNational != null ? money(r.rehabPhotoNational) : '—'}</td>
+                <tr style={{ background: ‘#f7f9fd’ }}>
+                  <td style={{ padding: ‘6px 10px’, fontWeight: 600 }}>Photo (pic-rehab read)</td>
+                  <td style={{ padding: ‘6px 10px’, textAlign: ‘right’, color: r.rehabPhoto ? ‘#0A0F2C’ : ‘#9ca3af’ }}>{r.rehabPhoto != null ? money(r.rehabPhoto) : ‘— (upload photos)’}</td>
+                  <td style={{ padding: ‘6px 10px’, textAlign: ‘right’, color: r.rehabPhotoNational ? ‘#0A0F2C’ : ‘#9ca3af’ }}>{r.rehabPhotoNational != null ? money(r.rehabPhotoNational) : (r.inputs.sqft ? ‘—‘ : ‘— (need sqft)’)}</td>
                 </tr>
               </tbody>
             </table>
@@ -1552,33 +1586,46 @@ function Results({ r }) {
           <p style={srcStyle}>
             {r.rehabUsed != null
               ? `Offer math used ${money(r.rehabUsed)} (your manual condition total; a typed Rehab Budget overrides it).`
-              : 'Enter property condition above (or upload photos) to drive the rehab number into the offer.'}
-            {' '}Your numbers = Rehab Calc line-item engine. National = area × national $/sf benchmark (mid-Atlantic, data-enrichment). Photo line uses pic-rehab’s overall condition.
+              : !r.inputs.sqft
+                ? ‘⚠ First: Enter Living Square Feet above — then open the Rehab Calc tool to answer condition questions. The national average needs sqft to calculate.’
+                : ‘Open the Rehab Calc tool above to answer condition questions, or upload photos to auto-detect rehab tier. Your numbers = Rehab Calc line-item engine. National = area × national $/sf benchmark (mid-Atlantic, data-enrichment).’}
           </p>
 
           {/* Per-line: human condition + $ (your numbers) vs photo-assessed condition */}
-          {r.rehabBreakdown && r.rehabBreakdown.length > 0 && (
-            <details style={{ marginTop: 8 }}>
-              <summary style={{ cursor: 'pointer', fontWeight: 600 }}>Line-by-line — your condition &amp; $ vs the photo read</summary>
-              <div style={{ overflowX: 'auto', marginTop: 6 }}>
-                <table style={{ borderCollapse: 'collapse', width: '100%', minWidth: 460 }}>
-                  <thead><tr>{['System', 'Your condition', 'Your $', 'Photo says'].map((hh, i) => (
-                    <th key={i} style={{ padding: '5px 8px', background: '#1E2A45', color: '#fff', fontSize: 11, textAlign: i === 0 ? 'left' : 'right' }}>{hh}</th>
+          {r.rehabBreakdown && r.rehabBreakdown.length > 0 ? (
+            <details style={{ marginTop: 8 }} open={r.rehabCondition > 0}>
+              <summary style={{ cursor: ‘pointer’, fontWeight: 600 }}>Line-by-line breakdown — your condition &amp; $ vs photo read</summary>
+              <div style={{ overflowX: ‘auto’, marginTop: 6 }}>
+                <table style={{ borderCollapse: ‘collapse’, width: ‘100%’, minWidth: 460 }}>
+                  <thead><tr>{[‘System’, ‘Your condition’, ‘Your $’, ‘Photo says’].map((hh, i) => (
+                    <th key={i} style={{ padding: ‘5px 8px’, background: ‘#1E2A45’, color: ‘#fff’, fontSize: 11, textAlign: i === 0 ? ‘left’ : ‘right’ }}>{hh}</th>
                   ))}</tr></thead>
                   <tbody>
-                    {r.rehabBreakdown.filter(li => li.id !== 'holding').map((li, i) => (
-                      <tr key={li.id} style={{ background: i % 2 ? '#f7f9fd' : '#fff' }}>
-                        <td style={{ padding: '5px 8px', fontWeight: 600 }}>{li.label}</td>
-                        <td style={{ padding: '5px 8px', textAlign: 'right' }}>{li.condition}</td>
-                        <td style={{ padding: '5px 8px', textAlign: 'right' }}>{money(li.total)}</td>
-                        <td style={{ padding: '5px 8px', textAlign: 'right', color: '#6b7280' }}>{photoConditionFor(li.id, r.rehabPhotoTiers)}</td>
+                    {r.rehabBreakdown.filter(li => li.id !== ‘holding’).map((li, i) => (
+                      <tr key={li.id} style={{ background: i % 2 ? ‘#f7f9fd’ : ‘#fff’ }}>
+                        <td style={{ padding: ‘5px 8px’, fontWeight: 600 }}>{li.label}</td>
+                        <td style={{ padding: ‘5px 8px’, textAlign: ‘right’, color: li.condition ? ‘#0A0F2C’ : ‘#9ca3af’ }}>{li.condition || ‘—‘}</td>
+                        <td style={{ padding: ‘5px 8px’, textAlign: ‘right’ }}>{money(li.total)}</td>
+                        <td style={{ padding: ‘5px 8px’, textAlign: ‘right’, color: ‘#6b7280’ }}>{photoConditionFor(li.id, r.rehabPhotoTiers)}</td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
               </div>
-              <p style={srcStyle}>“Photo says” is pic-rehab’s per-system read where the photos covered that system (—  = not assessed). Your $ uses your locked Rehab Calc numbers.</p>
+              <p style={srcStyle}>”Photo says” is pic-rehab’s per-system read where the photos covered that system (—  = not assessed). Your $ uses your locked Rehab Calc numbers.</p>
+              {r.rehabBreakdown && (
+                <details style={{ marginTop: 6 }}>
+                  <summary style={{ cursor: ‘pointer’, fontSize: 11, color: ‘#6b7280’, fontWeight: 500 }}>Developer view (raw rehab breakdown)</summary>
+                  <pre style={{ background: ‘#f4f6fb’, padding: 8, borderRadius: 6, overflow: ‘auto’, fontSize: 11 }}>{JSON.stringify(r.rehabBreakdown, null, 2)}</pre>
+                </details>
+              )}
             </details>
+          ) : (
+            <p style={{ ...srcStyle, marginTop: 8, color: r.rehabCondition > 0 ? ‘#2F7A40’ : ‘#9ca3af’ }}>
+              {r.rehabCondition > 0
+                ? ‘✅ Rehab Calc data received — line-by-line breakdown coming from the silo.’
+                : ‘Line-by-line breakdown will appear here once you answer the Rehab Calc condition questions above.’}
+            </p>
           )}
         </div>
       )}
