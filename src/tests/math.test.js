@@ -108,14 +108,14 @@ describe('storage.js (Math Bible v3 port)', () => {
 })
 
 describe('residential.js (Math Bible v3 port)', () => {
-  it('residentialAllModes returns 3 NOI lenses with correct pads', () => {
+  it('residentialAllModes returns 3 NOI lenses with correct MVM pads', () => {
     const r = residentialAllModes(50000, 14000)
     expect(r.light.padPct).toBe(0)
-    expect(r.standard.padPct).toBe(0.20)
-    expect(r.harsh.padPct).toBe(0.33)                 // Math Bible defaults.json PAD_HARSH = 0.33
+    expect(r.standard.padPct).toBe(0.15)
+    expect(r.harsh.padPct).toBe(0.30)                 // Math Bible MVM pads: 0%, 15%, 30% for all residential
     expect(r.light.noi).toBeCloseTo(36000, 0)         // 50000 - 14000 - 0
-    expect(r.standard.noi).toBeCloseTo(26000, 0)      // 50000 - 14000 - (0.20 × 50000 = 10000)
-    expect(r.harsh.noi).toBeCloseTo(19500, 0)         // 50000 - 14000 - (0.33 × 50000 = 16500)
+    expect(r.standard.noi).toBeCloseTo(28500, 0)      // 50000 - 14000 - (0.15 × 50000 = 7500)
+    expect(r.harsh.noi).toBeCloseTo(21000, 0)         // 50000 - 14000 - (0.30 × 50000 = 15000)
   })
 
   it('residentialMAO applies 70% rule', () => {
@@ -240,7 +240,7 @@ describe('scenarioEngine.js (Math Bible v3 port)', () => {
       rehab: 35000
     })
     expect(result.arvResult.confidence).toBe('OPERATOR_PROVIDED')
-    expect(result.modes.standard.noi).toBeCloseTo(26000, 0)
+    expect(result.modes.standard.noi).toBeCloseTo(28500, 0)  // 50000 - 14000 - (0.15 × 50000)
     expect(result.mao.endBuyer).toBeCloseTo(112000, 0)
     expect(result.dscr.standard).toBeDefined()
     expect(result.ownerHardMode.pMax).toBeGreaterThan(0)
