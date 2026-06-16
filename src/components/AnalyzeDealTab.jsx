@@ -700,7 +700,7 @@ export default function AnalyzeDealTab({ sharedUrlState, deepUrlState }) {
         propertyType: typeId, address: fields.address, city: fields.city, state: fields.state, zip: fields.zip,
         beds: fields.beds, baths: fields.baths, sqft: fields.sqft, dealType: mode,
         // Form field values (income-property + residential fields) — MUST be sent to calc engine
-        askingPrice: fields.askingPrice, arv: fields.arv, rehab: fields.rehab,
+        askingPrice: fields.askingPrice, arv: fields.arv, rehab: fields.rehab || rehabCondition,
         grossIncome: fields.grossIncome, expenses: fields.expenses, expenseRatio: fields.expenseRatio,
         totalUnits: fields.totalUnits, climateUnits: fields.climateUnits, netRentableSqft: fields.netRentableSqft,
         occupancy: fields.occupancy, units: fields.units, noi: fields.noi,
