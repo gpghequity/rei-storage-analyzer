@@ -1173,8 +1173,32 @@ export default function AnalyzeDealTab({ sharedUrlState, deepUrlState }) {
               setRehabCondition(total)
               setManualRehab('')
               const area = num(fields.sqft) || 0
+
+              // National benchmark: infer tier from silo's total
+              // Compare against light/medium/heavy rates to find the closest match
+              let tier = 'medium';
+              let nationalPsf = NATIONAL_PSF.medium_rehab;
+
+              if (area > 0) {
+                const lightCost = area * (NATIONAL_PSF.light_rehab || NATIONAL_PSF.medium_rehab) * REGIONAL_ADJ;
+                const mediumCost = area * NATIONAL_PSF.medium_rehab * REGIONAL_ADJ;
+                const heavyCost = area * (NATIONAL_PSF.heavy_rehab || NATIONAL_PSF.medium_rehab * 1.5) * REGIONAL_ADJ;
+
+                // Pick tier closest to what user actually entered
+                const costs = [
+                  { tier: 'light_rehab', cost: lightCost },
+                  { tier: 'medium_rehab', cost: mediumCost },
+                  { tier: 'heavy_rehab', cost: heavyCost }
+                ];
+                const closest = costs.reduce((a, b) =>
+                  Math.abs(b.cost - total) < Math.abs(a.cost - total) ? b : a
+                );
+                tier = closest.tier;
+                nationalPsf = NATIONAL_PSF[tier] || NATIONAL_PSF.medium_rehab;
+              }
+
               const national = area > 0
-                ? { area, psf: Math.round(NATIONAL_PSF.medium_rehab * REGIONAL_ADJ), total: Math.round(area * NATIONAL_PSF.medium_rehab * REGIONAL_ADJ), tier: 'medium' }
+                ? { area, psf: Math.round(nationalPsf * REGIONAL_ADJ), total: Math.round(area * nationalPsf * REGIONAL_ADJ), tier }
                 : null
               setRehabDetail({ ...detail, national })
             }}
