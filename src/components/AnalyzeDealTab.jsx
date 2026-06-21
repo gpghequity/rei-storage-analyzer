@@ -679,8 +679,8 @@ function StatusLine({ typeId, portfolio }) {
 }
 
 export default function AnalyzeDealTab({ sharedUrlState, deepUrlState }) {
-  const [typeId, setTypeId] = useState('residential')
-  const [mode, setMode] = useState('flip')
+  const [typeId, setTypeId] = useState('self_storage')
+  const [mode, setMode] = useState('storage')
   const [advancedOpen, setAdvancedOpen] = useState(false)
   const [portfolio, setPortfolio] = useState(false)
   const [rehabCondition, setRehabCondition] = useState(0) // manual condition → rehab $ (your numbers)
@@ -1106,29 +1106,9 @@ export default function AnalyzeDealTab({ sharedUrlState, deepUrlState }) {
       </div>
 
       <div style={card} className="no-print">
-        <h3 style={h3}>1 · Property Type</h3>
-        <select aria-label="Property type" style={inp} value={typeId} onChange={e => { setTypeId(e.target.value); const t = getType(e.target.value); if (t.subModes) setMode(t.subModes[0].id) }}>
-          {PROPERTY_TYPES.map(t => <option key={t.id} value={t.id}>{t.label}</option>)}
-        </select>
-        {!isLand && (
-          <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 10, fontSize: 13, fontWeight: 600, color: '#1E2A45', cursor: 'pointer' }}>
-            <input type="checkbox" checked={portfolio} onChange={e => setPortfolio(e.target.checked)} />
-            Portfolio — analyze multiple buildings of this type on one sheet
-          </label>
-        )}
-        {/* Flip / Rental etc. submodes (guided screen only). */}
-        {type.subModes && !isLand && (
-          <div style={{ marginTop: 8, display: 'flex', gap: 8 }}>
-            {type.subModes.map(m => (
-              <button key={m.id} type="button" onClick={() => setMode(m.id)}
-                style={{ padding: '6px 12px', borderRadius: 6, border: '1px solid #C9A84C', cursor: 'pointer', background: mode === m.id ? '#C9A84C' : '#fff', color: mode === m.id ? '#0A0F2C' : '#1E2A45', fontWeight: 600 }}>
-                {m.label}
-              </button>
-            ))}
-          </div>
-        )}
-        {type.note && <p style={{ ...srcStyle, marginTop: 8 }}>{type.note}</p>}
-        {!type.implemented && !deep && !isPortfolio && <p style={{ color: '#C8851A', fontWeight: 600, marginTop: 8 }}>⚠ Supported intake — analysis module not yet implemented for this type.</p>}
+        <h3 style={h3}>Property Type</h3>
+        <p style={{ fontSize: 14, fontWeight: 600, color: '#0A0F2C', margin: '6px 0' }}>Self-Storage</p>
+        <p style={srcStyle}>Analyze self-storage facilities: occupancy, NOI, and financing structures.</p>
       </div>
 
       {isPortfolio ? (
