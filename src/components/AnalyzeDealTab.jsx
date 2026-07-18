@@ -1106,9 +1106,17 @@ export default function AnalyzeDealTab({ sharedUrlState, deepUrlState }) {
       </div>
 
       <div style={card} className="no-print">
-        <h3 style={h3}>Property Type</h3>
-        <p style={{ fontSize: 14, fontWeight: 600, color: '#0A0F2C', margin: '6px 0' }}>Self-Storage</p>
-        <p style={srcStyle}>Analyze self-storage facilities: occupancy, NOI, and financing structures.</p>
+        <h3 style={h3}>1 · Property Type</h3>
+        <select aria-label="Property type" style={inp} value={typeId} onChange={e => { setTypeId(e.target.value); const t = getType(e.target.value); if (t.subModes) setMode(t.subModes[0].id) }}>
+          {PROPERTY_TYPES.map(t => <option key={t.id} value={t.id}>{t.label}</option>)}
+        </select>
+        <p style={srcStyle}>{getType(typeId).note || 'Choose the property type; the guided intake and Math Bible engine adapt to it.'}</p>
+        {!isLand && (
+          <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 10, fontSize: 13, fontWeight: 600, color: '#1E2A45', cursor: 'pointer' }}>
+            <input type="checkbox" checked={portfolio} onChange={e => setPortfolio(e.target.checked)} />
+            Portfolio — analyze multiple buildings of this type on one sheet
+          </label>
+        )}
       </div>
 
       {isPortfolio ? (
